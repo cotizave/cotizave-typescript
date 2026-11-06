@@ -118,3 +118,42 @@ describe('crypto', () => {
     expect(urlOf(h2.calls).pathname).toBe('/v2/crypto/usdt-usd');
   });
 });
+
+describe('remaining coverage', () => {
+  it('currencies.list hits the catalog', async () => {
+    const { client, calls } = harness(always({ body: { currencies: [] } }));
+    await client.currencies.list();
+    expect(urlOf(calls).pathname).toBe('/v2/currencies');
+  });
+
+  it('rates.global accepts symbols as a string and a custom base', async () => {
+    const { client, calls } = harness(always({ body: { base: 'EUR', count: 0, rates: [] } }));
+    await client.rates.global({ symbols: 'BRL,ARS', base: 'EUR' });
+    const url = urlOf(calls);
+    expect(url.searchParams.get('symbols')).toBe('BRL,ARS');
+    expect(url.searchParams.get('base')).toBe('EUR');
+    expect(url.searchParams.has('format')).toBe(false);
+  });
+
+  it('rejects empty identifiers before any request', async () => {
+    const { client, calls } = harness(always({ body: {} }));
+    expect(() => client.rates.list('')).toThrow(/country code/);
+    expect(() => client.rates.get('CO', ' ')).toThrow(/rate id/);
+    expect(() => client.banks.get('VE', '')).toThrow(/bank code/);
+    expect(calls.length).toBe(0);
+  });
+
+  it('history.iterate forwards an explicit page size', async () => {
+    const { client, calls } = harness(
+      always({ body: { granularity: 'raw', points: [], next_cursor: null } }),
+    );
+    for await (const point of client.history.iterate({
+      country: 'VE',
+      rateId: 've-bcv',
+      limit: 250,
+    })) {
+      void point;
+    }
+    expect(urlOf(calls).searchParams.get('limit')).toBe('250');
+  });
+});

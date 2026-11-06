@@ -22,6 +22,8 @@ npm run lint             # ESLint
 npm run typecheck        # tsc --noEmit
 npm run test             # unit + contract tests (Vitest)
 npm run test:types       # compile-only type inference tests
+npm run test:coverage    # tests with a coverage report
+npm run test:integration # opt-in tests against the real API (see below)
 npm run build            # dual ESM/CJS build + d.ts (tsup)
 npm run check:package    # publint + are-the-types-wrong on the packed tarball
 ```
@@ -32,6 +34,18 @@ Before opening a PR, run the full gate:
 npm run format:check && npm run lint && npm run typecheck && npm run test:types \
   && npm run test && npm run build && npm run check:package
 ```
+
+## Integration tests (opt-in)
+
+`tests/integration` talks to the real API. It is skipped unless you set both
+variables, so it never runs by accident or in CI:
+
+```bash
+COTIZAVE_INTEGRATION=1 COTIZAVE_API_KEY=your_key npm run test:integration
+```
+
+It issues a handful of read-only requests available on every plan. Never commit a
+key, and never use a customer's key.
 
 ## Source of truth: the v2 contract
 
