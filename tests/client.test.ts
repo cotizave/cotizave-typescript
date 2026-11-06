@@ -68,13 +68,15 @@ describe('request building', () => {
     expect(calls[0]!.headers['user-agent']).toMatch(/^cotizave-sdk-typescript\/.+ acme\/1\.0$/);
   });
 
-  it('joins array symbols for the global feed and sets format=map', async () => {
-    const { client, calls } = harness(always({ body: { base: 'USD', date: '', rates: {} } }));
-    await client.rates.global({ symbols: ['BRL', 'EUR'], asMap: true });
+  it('joins array symbols for the global feed', async () => {
+    const { client, calls } = harness(
+      always({ body: { base: 'USD', date: '', count: 0, rates: [] } }),
+    );
+    await client.rates.global({ symbols: ['BRL', 'EUR'] });
     const url = new URL(calls[0]!.url);
     expect(url.pathname).toBe('/v2/fx/rates');
     expect(url.searchParams.get('symbols')).toBe('BRL,EUR');
-    expect(url.searchParams.get('format')).toBe('map');
+    expect(url.searchParams.has('format')).toBe(false);
   });
 });
 

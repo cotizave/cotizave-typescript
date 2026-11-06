@@ -118,7 +118,6 @@ const trm = await client.rates.get('CO', 'co-trm');
 
 // The official rate of every published country in one call.
 const global = await client.rates.global({ symbols: ['BRL', 'EUR'] });
-const map = await client.rates.global({ asMap: true }); // { "ARS": 1012.5, ... }
 
 // The whole board of a country as it closed on a past day.
 const board = await client.rates.snapshot('AR', '2026-10-01');
@@ -346,7 +345,7 @@ const { data, meta } = await client.request<{ rates: unknown[] }>({
   method: 'GET',
   path: '/v2/fx/ar/rates',
 });
-console.log(meta.rateLimit.remaining, meta.rateLimit.limitPerMinute);
+console.log(meta.rateLimit.remaining, meta.rateLimit.limit, meta.rateLimit.reset);
 ```
 
 ## CSV / XML export
@@ -369,6 +368,10 @@ if (next.notModified) {
   // 304 — reuse your cached copy; there is no body.
 }
 ```
+
+Conditional requests pay off on catalogs (countries, currencies, issuers, banks),
+which are stable. Live rate responses change on every call, so they rarely answer
+`304`.
 
 ## Security
 

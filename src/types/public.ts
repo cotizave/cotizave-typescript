@@ -28,10 +28,8 @@ export type RatesSnapshotResponse = Schemas['RatesSnapshotResponse'];
 
 /** A single row of the global officials endpoint (`rates.global`). */
 export type GlobalRateRow = Schemas['GlobalRateRow'];
-/** Rich-list form of `rates.global` (default). */
+/** Response of `rates.global`. */
 export type GlobalRatesList = Schemas['GlobalRatesList'];
-/** Compact map form of `rates.global` (`format: "map"`). */
-export type GlobalRatesMap = Schemas['GlobalRatesMap'];
 
 /** One historical data point (`history.get` with a `date`). */
 export type HistoryPoint = Schemas['HistoryPointResponse'];

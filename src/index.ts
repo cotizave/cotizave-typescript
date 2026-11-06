@@ -92,7 +92,6 @@ export type {
   GeoFields,
   GlobalRateRow,
   GlobalRatesList,
-  GlobalRatesMap,
   HistoryPoint,
   HistoryCollection,
   HistoryStats,

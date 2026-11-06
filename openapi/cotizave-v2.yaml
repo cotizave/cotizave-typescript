@@ -32,21 +32,17 @@ paths:
       summary: The official rate of every published country in a single call.
       description: |
         `?symbols=BRL,EUR` filters currencies (all plans). `?base=EUR` changes
-        the base (paid plans only; 402 on Free). `?format=map` returns the compact
-        map `{quote: mid}`; any other value returns the rich list (default).
+        the base (paid plans only; 402 on Free).
       parameters:
         - {name: symbols, in: query, schema: {type: string}, description: 'Comma-separated ISO 4217 currencies.'}
         - {name: base, in: query, schema: {type: string, pattern: '^[A-Za-z]{3}$'}, description: 'Base currency (paid plans only). Defaults to USD.'}
-        - {name: format, in: query, schema: {type: string, enum: [list, map]}, description: 'Response shape. Defaults to list.'}
+        - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Rich list or compact map, depending on format
+          description: The official rate of each published country
           content:
             application/json:
-              schema:
-                oneOf:
-                  - $ref: '#/components/schemas/GlobalRatesList'
-                  - $ref: '#/components/schemas/GlobalRatesMap'
+              schema: {$ref: '#/components/schemas/GlobalRatesList'}
         '400': {$ref: '#/components/responses/Error'}
         '402': {$ref: '#/components/responses/Error'}
         '429': {$ref: '#/components/responses/RateLimited'}
@@ -814,8 +810,12 @@ components:
         quote: {type: string}
         date: {type: string, format: date}
         mid: {type: number}
+        rate: {type: number, description: 'v1-compatible alias of mid; VE only.'}
+        bid: {type: number, description: 'Only for rates with their own daily history.'}
+        ask: {type: number, description: 'Only for rates with their own daily history.'}
         updated_at: {type: string, format: date-time}
         fetched_at: {type: string, format: date-time, description: 'For own daily history, the last write of that version; in VE, the stored capture; for the TRM fallback, the time the response was built.'}
+        captured_at: {type: string, format: date-time, description: 'v1-compatible name of the capture time; VE only.'}
     HistoryCollection:
       type: object
       required: [id, market, base, quote, from, to, granularity, count, next_cursor, points]
@@ -829,6 +829,7 @@ components:
         granularity: {type: string, enum: [daily, raw]}
         count: {type: integer}
         next_cursor: {type: [string, 'null']}
+        truncated: {type: boolean, description: 'Raw only: present and true when the page was cut short.'}
         points:
           type: array
           items:
@@ -837,7 +838,11 @@ components:
             properties:
               date: {type: string, format: date}
               mid: {type: number}
+              rate: {type: number, description: 'v1-compatible alias of mid; VE only.'}
+              bid: {type: number, description: 'Only for rates with their own daily history.'}
+              ask: {type: number, description: 'Only for rates with their own daily history.'}
               updated_at: {type: string, format: date-time}
+              captured_at: {type: string, format: date-time, description: 'v1-compatible name of the capture time; VE only.'}
               fetched_at: {type: string, format: date-time, description: 'For own daily history, the last write of that version; in VE, the stored capture; for the TRM fallback, the time the response was built.'}
     ConvertResponse:
       type: object
@@ -952,16 +957,6 @@ components:
         date: {type: string, format: date-time}
         count: {type: integer}
         rates: {type: array, items: {$ref: '#/components/schemas/GlobalRateRow'}}
-    GlobalRatesMap:
-      type: object
-      required: [base, date, rates]
-      properties:
-        base: {type: string}
-        date: {type: string, format: date-time}
-        rates:
-          type: object
-          additionalProperties: {type: number}
-          description: 'Map of quote currency to mid (units per 1 base).'
     HistoricalLimitRow:
       type: object
       required: [id, country, quote, first, last, days]

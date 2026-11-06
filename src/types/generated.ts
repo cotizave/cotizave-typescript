@@ -1065,16 +1065,14 @@ export interface paths {
         /**
          * The official rate of every published country in a single call.
          * @description `?symbols=BRL,EUR` filters currencies (all plans). `?base=EUR` changes
-         *     the base (paid plans only; 402 on Free). `?format=map` returns the compact
-         *     map `{quote: mid}`; any other value returns the rich list (default).
+         *     the base (paid plans only; 402 on Free).
          */
         get: {
             parameters: {
                 query?: {
                     /** @description Base currency (paid plans only). Defaults to USD. */
                     base?: string;
-                    /** @description Response shape. Defaults to list. */
-                    format?: "list" | "map";
+                    format?: components["parameters"]["format"];
                     /** @description Comma-separated ISO 4217 currencies. */
                     symbols?: string;
                 };
@@ -1084,13 +1082,13 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Rich list or compact map, depending on format */
+                /** @description The official rate of each published country */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["GlobalRatesList"] | components["schemas"]["GlobalRatesMap"];
+                        "application/json": components["schemas"]["GlobalRatesList"];
                     };
                 };
                 400: components["responses"]["Error"];
@@ -1507,15 +1505,6 @@ export interface components {
             date: string;
             rates: components["schemas"]["GlobalRateRow"][];
         };
-        GlobalRatesMap: {
-            base: string;
-            /** Format: date-time */
-            date: string;
-            /** @description Map of quote currency to mid (units per 1 base). */
-            rates: {
-                [key: string]: number;
-            };
-        };
         HistoricalLimitRow: {
             /** @description Omitted = USD; EUR for euro-denominated official rates. */
             base?: string;
@@ -1545,6 +1534,15 @@ export interface components {
             market: string;
             next_cursor: string | null;
             points: {
+                /** @description Only for rates with their own daily history. */
+                ask?: number;
+                /** @description Only for rates with their own daily history. */
+                bid?: number;
+                /**
+                 * Format: date-time
+                 * @description v1-compatible name of the capture time; VE only.
+                 */
+                captured_at?: string;
                 /** Format: date */
                 date: string;
                 /**
@@ -1553,15 +1551,28 @@ export interface components {
                  */
                 fetched_at: string;
                 mid: number;
+                /** @description v1-compatible alias of mid; VE only. */
+                rate?: number;
                 /** Format: date-time */
                 updated_at: string;
             }[];
             quote: string;
             /** Format: date */
             to: string;
+            /** @description Raw only: present and true when the page was cut short. */
+            truncated?: boolean;
         };
         HistoryPointResponse: {
+            /** @description Only for rates with their own daily history. */
+            ask?: number;
             base: string;
+            /** @description Only for rates with their own daily history. */
+            bid?: number;
+            /**
+             * Format: date-time
+             * @description v1-compatible name of the capture time; VE only.
+             */
+            captured_at?: string;
             /** Format: date */
             date: string;
             /**
@@ -1573,6 +1584,8 @@ export interface components {
             market: string;
             mid: number;
             quote: string;
+            /** @description v1-compatible alias of mid; VE only. */
+            rate?: number;
             /** Format: date-time */
             updated_at: string;
         };

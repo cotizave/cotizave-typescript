@@ -6,7 +6,6 @@ import type {
   RateCategory,
   RatesSnapshotResponse,
   GlobalRatesList,
-  GlobalRatesMap,
 } from '../types/public';
 
 /** Filters for {@link RatesResource.list}. */
@@ -89,28 +88,14 @@ export class RatesResource extends Resource {
   /**
    * The official rate of every published country in a single call.
    *
-   * Returns the rich list by default, or the compact map when `asMap` is set.
+   * @example
+   * const { rates } = await client.rates.global({ symbols: ['BRL', 'EUR'] });
    */
-  global(
-    options?: GlobalRatesOptions & { asMap?: false },
-    config?: RequestConfig,
-  ): Promise<GlobalRatesList>;
-  global(
-    options: GlobalRatesOptions & { asMap: true },
-    config?: RequestConfig,
-  ): Promise<GlobalRatesMap>;
-  global(
-    options: GlobalRatesOptions & { asMap?: boolean } = {},
-    config?: RequestConfig,
-  ): Promise<GlobalRatesList | GlobalRatesMap> {
+  global(options: GlobalRatesOptions = {}, config?: RequestConfig): Promise<GlobalRatesList> {
     const symbols = Array.isArray(options.symbols) ? options.symbols.join(',') : options.symbols;
-    return this.transport.get<GlobalRatesList | GlobalRatesMap>(
+    return this.transport.get<GlobalRatesList>(
       '/v2/fx/rates',
-      {
-        symbols,
-        base: options.base,
-        format: options.asMap ? 'map' : undefined,
-      },
+      { symbols, base: options.base },
       config,
     );
   }

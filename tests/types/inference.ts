@@ -4,13 +4,7 @@
  * Nothing here executes.
  */
 import { Cotizave } from '../../src/index';
-import type {
-  Rate,
-  ConvertResponse,
-  RatesResponse,
-  GlobalRatesList,
-  GlobalRatesMap,
-} from '../../src/index';
+import type { Rate, ConvertResponse, RatesResponse, GlobalRatesList } from '../../src/index';
 
 declare const client: Cotizave;
 
@@ -24,14 +18,14 @@ async function returns(): Promise<void> {
   void conv;
 }
 
-// Overloads: asMap narrows the return type.
-async function globalOverloads(): Promise<void> {
+// rates.global returns the rich list, with or without filters.
+async function globalRates(): Promise<void> {
   const list: GlobalRatesList = await client.rates.global();
-  const list2: GlobalRatesList = await client.rates.global({ symbols: ['BRL'] });
-  const map: GlobalRatesMap = await client.rates.global({ asMap: true });
+  const filtered: GlobalRatesList = await client.rates.global({ symbols: ['BRL'], base: 'EUR' });
+  // @ts-expect-error the compact map form is not reachable on the live API
+  void client.rates.global({ asMap: true });
   void list;
-  void list2;
-  void map;
+  void filtered;
 }
 
 // Required fields are enforced at compile time.
@@ -52,4 +46,4 @@ function noExtraProps(): void {
   void client.convert({ from: 'USD', to: 'BRL', amount: 1, limit: 5 });
 }
 
-export { returns, globalOverloads, required, noExtraProps };
+export { returns, globalRates, required, noExtraProps };
