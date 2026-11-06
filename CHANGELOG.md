@@ -26,7 +26,27 @@ Initial release. Not yet published to npm.
   preserves API `code`, `message`, `field`, `details` and response metadata.
 - Response metadata (status, headers, parsed rate-limit info) via `request`;
   conditional GETs (`ifNoneMatch` / `304`); CSV/XML export via `export`.
-- Dual ESM + CommonJS builds with bundled type declarations.
+- Dual ESM + CommonJS builds with per-format type declarations (validated with
+  `publint` and `are-the-types-wrong`).
+- Client options with safe defaults: `timeout`, `maxRetries`, `maxRetryDelay`,
+  `maxResponseBytes`, `baseUrl`, `fetch`, `userAgent`, `allowInsecureHttp`.
+- Per-call overrides on every method through a trailing `RequestConfig`
+  (`signal`, `timeout`, `maxRetries`).
+
+### Security
+
+- Requests can never leave the configured origin; a path that resolves to another
+  host is rejected (`invalid_request_path`).
+- Redirects are treated as errors, so the API key is never forwarded to another
+  origin.
+- The timeout and the caller's `AbortSignal` cover the whole response, including a
+  slow or stalled body.
+- Response bodies are read with a size cap (`maxResponseBytes`).
+- An `http://` base URL is rejected unless `allowInsecureHttp` is set.
+- The API key is held in runtime-private fields and is absent from
+  `client.config`, so logging or serializing a client never exposes it.
+- Caller-supplied header values are validated, and prototype-polluting keys are
+  stripped from server-provided `error.details`.
 
 [Unreleased]: https://github.com/cotizave/cotizave-typescript/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/cotizave/cotizave-typescript/releases/tag/v0.1.0

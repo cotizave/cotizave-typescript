@@ -144,8 +144,7 @@ export function errorFromResponse(
   meta: ResponseMeta,
   rawBodyText?: string,
 ): CotizaveError {
-  const Ctor =
-    STATUS_MAP[status] ?? (status >= 500 ? CotizaveServerError : CotizaveError);
+  const Ctor = STATUS_MAP[status] ?? (status >= 500 ? CotizaveServerError : CotizaveError);
 
   const hasApiError = body != null && typeof body.code === 'string';
   const code = hasApiError ? (body.code as string) : fallbackCode(status);

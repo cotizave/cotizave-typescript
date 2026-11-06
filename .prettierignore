@@ -1,0 +1,10 @@
+dist
+node_modules
+coverage
+package-lock.json
+# Generated from the OpenAPI spec; never hand-formatted.
+src/types/generated.ts
+# Mirrors the backend contract; keep its formatting intact.
+openapi/cotizave-v2.yaml
+# MDX comments are not understood by the formatter.
+docs/*.mdx

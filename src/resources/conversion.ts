@@ -74,7 +74,10 @@ export class ConversionResource extends Resource {
    *   ],
    * });
    */
-  async convertBulk(options: BulkConvertOptions, config?: RequestConfig): Promise<BulkConvertResponse> {
+  async convertBulk(
+    options: BulkConvertOptions,
+    config?: RequestConfig,
+  ): Promise<BulkConvertResponse> {
     const conversions = options?.conversions;
     if (!Array.isArray(conversions) || conversions.length === 0) {
       throw new TypeError('convertBulk: `conversions` must be a non-empty array.');

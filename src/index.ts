@@ -12,6 +12,7 @@ export { Cotizave } from './client';
 
 export {
   type CotizaveOptions,
+  type PublicConfig,
   type FetchLike,
   SDK_VERSION,
   DEFAULT_BASE_URL,
@@ -36,7 +37,13 @@ export {
 } from './errors';
 
 // Low-level request/response types.
-export type { RequestOptions, RequestConfig, RawResult, QueryParams, QueryValue } from './transport';
+export type {
+  RequestOptions,
+  RequestConfig,
+  RawResult,
+  QueryParams,
+  QueryValue,
+} from './transport';
 
 // Resource option types.
 export type { ListRatesOptions, GlobalRatesOptions } from './resources/rates';

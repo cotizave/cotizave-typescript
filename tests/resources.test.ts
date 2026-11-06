@@ -42,23 +42,31 @@ describe('catalog resources', () => {
 
 describe('holidays', () => {
   it('list sends year', async () => {
-    const { client, calls } = harness(always({ body: { country: 'AR', year: 2026, holidays: [] } }));
+    const { client, calls } = harness(
+      always({ body: { country: 'AR', year: 2026, holidays: [] } }),
+    );
     await client.holidays.list('AR', { year: 2026 });
     expect(urlOf(calls).searchParams.get('year')).toBe('2026');
   });
 
   it('check sends date, next sends from', async () => {
-    const h1 = harness(always({ body: { country: 'AR', date: '2026-05-01', is_holiday: true, holiday: null } }));
+    const h1 = harness(
+      always({ body: { country: 'AR', date: '2026-05-01', is_holiday: true, holiday: null } }),
+    );
     await h1.client.holidays.check('AR', '2026-05-01');
     expect(urlOf(h1.calls).searchParams.get('date')).toBe('2026-05-01');
 
-    const h2 = harness(always({ body: { country: 'AR', from: '2026-05-01', days_until: 0, holiday: {} } }));
+    const h2 = harness(
+      always({ body: { country: 'AR', from: '2026-05-01', days_until: 0, holiday: {} } }),
+    );
     await h2.client.holidays.next('AR', '2026-05-01');
     expect(urlOf(h2.calls).searchParams.get('from')).toBe('2026-05-01');
   });
 
   it('businessDays validates days and builds the path', async () => {
-    const { client, calls } = harness(always({ body: { country: 'VE', from: '2026-10-01', days: 5, result: '2026-10-08' } }));
+    const { client, calls } = harness(
+      always({ body: { country: 'VE', from: '2026-10-01', days: 5, result: '2026-10-08' } }),
+    );
     await client.holidays.businessDays('VE', { from: '2026-10-01', days: 5 });
     expect(urlOf(calls).pathname).toBe('/v2/holidays/ve/business-days');
     expect(urlOf(calls).searchParams.get('days')).toBe('5');
@@ -80,7 +88,13 @@ describe('fx tools', () => {
     expect(urlOf(s.calls).searchParams.get('against')).toBe('ve-paralelo');
 
     const r = harness(always({ body: { country: 'VE', best: {} } }));
-    await r.client.route('VE', { from: 'USD', to: 'VES', amount: 100, direction: 'send', maxStaleness: 60 });
+    await r.client.route('VE', {
+      from: 'USD',
+      to: 'VES',
+      amount: 100,
+      direction: 'send',
+      maxStaleness: 60,
+    });
     const ru = urlOf(r.calls);
     expect(ru.pathname).toBe('/v2/fx/ve/route');
     expect(ru.searchParams.get('amount')).toBe('100');

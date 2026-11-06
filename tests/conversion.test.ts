@@ -5,7 +5,13 @@ import { harness, always } from './helpers';
 describe('convert', () => {
   it('sends from/to/amount as query params on GET', async () => {
     const { client, calls } = harness(
-      always({ body: { from: { currency: 'USD', amount: 100 }, to: { currency: 'BRL', amount: 500 }, rate: 5 } }),
+      always({
+        body: {
+          from: { currency: 'USD', amount: 100 },
+          to: { currency: 'BRL', amount: 500 },
+          rate: 5,
+        },
+      }),
     );
     const res = await client.convert({ from: 'USD', to: 'BRL', amount: 100 });
     const url = new URL(calls[0]!.url);
@@ -24,7 +30,13 @@ describe('convert', () => {
 
   it('passes optional via/date', async () => {
     const { client, calls } = harness(always({ body: { rate: 1 } }));
-    await client.convert({ from: 'USD', to: 'VES', amount: 10, via: 've-binance', date: '2026-10-01' });
+    await client.convert({
+      from: 'USD',
+      to: 'VES',
+      amount: 10,
+      via: 've-binance',
+      date: '2026-10-01',
+    });
     const url = new URL(calls[0]!.url);
     expect(url.searchParams.get('via')).toBe('ve-binance');
     expect(url.searchParams.get('date')).toBe('2026-10-01');
@@ -78,7 +90,14 @@ describe('convertBulk', () => {
           succeeded: 1,
           failed: 1,
           results: [
-            { index: 0, conversion: { from: { currency: 'USD', amount: 100 }, to: { currency: 'ARS', amount: 1 }, rate: 1 } },
+            {
+              index: 0,
+              conversion: {
+                from: { currency: 'USD', amount: 100 },
+                to: { currency: 'ARS', amount: 1 },
+                rate: 1,
+              },
+            },
             { index: 1, error: { code: 'rate_not_found', message: 'no rate' } },
           ],
         },

@@ -26,10 +26,14 @@ try {
 
   // 3. A conversion (the math runs on Cotizave).
   const conversion = await client.convert({ from: 'USD', to: 'BRL', amount: 100 });
-  console.log(`100 ${conversion.from.currency} = ${conversion.to.amount} ${conversion.to.currency}`);
+  console.log(
+    `100 ${conversion.from.currency} = ${conversion.to.amount} ${conversion.to.currency}`,
+  );
 } catch (err) {
   if (err instanceof CotizaveRateLimitError) {
-    console.error(err.isQuotaExhausted ? 'Monthly quota exhausted.' : `Slow down; retry in ${err.retryAfter}s.`);
+    console.error(
+      err.isQuotaExhausted ? 'Monthly quota exhausted.' : `Slow down; retry in ${err.retryAfter}s.`,
+    );
   } else if (err instanceof CotizaveError) {
     console.error(`API error ${err.status} (${err.code}): ${err.message}`);
   } else {

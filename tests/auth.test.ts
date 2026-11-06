@@ -18,9 +18,12 @@ describe('authentication', () => {
   });
 
   it('does not keep the API key in a query param on export either', async () => {
-    const { client, calls } = harness(always({ body: 'a,b,c', headers: { 'content-type': 'text/csv' } }), {
-      apiKey: 'secret-xyz',
-    });
+    const { client, calls } = harness(
+      always({ body: 'a,b,c', headers: { 'content-type': 'text/csv' } }),
+      {
+        apiKey: 'secret-xyz',
+      },
+    );
     await client.export('/v2/fx/ar/rates', { format: 'csv' });
     expect(calls[0]!.url).not.toContain('secret-xyz');
     expect(calls[0]!.headers['x-api-key']).toBe('secret-xyz');

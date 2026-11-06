@@ -38,7 +38,11 @@ export class RatesResource extends Resource {
    * @example
    * const { rates } = await client.rates.list('AR');
    */
-  list(country: string, options: ListRatesOptions = {}, config?: RequestConfig): Promise<RatesResponse> {
+  list(
+    country: string,
+    options: ListRatesOptions = {},
+    config?: RequestConfig,
+  ): Promise<RatesResponse> {
     return this.transport.get<RatesResponse>(
       `/v2/fx/${cc(country)}/rates`,
       {
@@ -71,15 +75,19 @@ export class RatesResource extends Resource {
    *
    * Returns the rich list by default, or the compact map when `asMap` is set.
    */
-  global(options?: GlobalRatesOptions & { asMap?: false }, config?: RequestConfig): Promise<GlobalRatesList>;
-  global(options: GlobalRatesOptions & { asMap: true }, config?: RequestConfig): Promise<GlobalRatesMap>;
+  global(
+    options?: GlobalRatesOptions & { asMap?: false },
+    config?: RequestConfig,
+  ): Promise<GlobalRatesList>;
+  global(
+    options: GlobalRatesOptions & { asMap: true },
+    config?: RequestConfig,
+  ): Promise<GlobalRatesMap>;
   global(
     options: GlobalRatesOptions & { asMap?: boolean } = {},
     config?: RequestConfig,
   ): Promise<GlobalRatesList | GlobalRatesMap> {
-    const symbols = Array.isArray(options.symbols)
-      ? options.symbols.join(',')
-      : options.symbols;
+    const symbols = Array.isArray(options.symbols) ? options.symbols.join(',') : options.symbols;
     return this.transport.get<GlobalRatesList | GlobalRatesMap>(
       '/v2/fx/rates',
       {

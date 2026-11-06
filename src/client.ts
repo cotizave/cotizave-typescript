@@ -1,4 +1,4 @@
-import { resolveConfig, type CotizaveOptions, type ResolvedConfig } from './config';
+import { resolveConfig, type CotizaveOptions, type PublicConfig } from './config';
 import {
   Transport,
   type QueryParams,
@@ -8,7 +8,11 @@ import {
 } from './transport';
 import { RatesResource } from './resources/rates';
 import { HistoryResource } from './resources/history';
-import { ConversionResource, type ConvertOptions, type BulkConvertOptions } from './resources/conversion';
+import {
+  ConversionResource,
+  type ConvertOptions,
+  type BulkConvertOptions,
+} from './resources/conversion';
 import {
   FxToolsResource,
   type SpreadOptions,
@@ -25,7 +29,12 @@ import {
 } from './resources/catalogs';
 import { HolidaysResource } from './resources/holidays';
 import { CryptoResource } from './resources/crypto';
-import type { ConvertResponse, BulkConvertResponse, SpreadResponse, RouteResponse } from './types/public';
+import type {
+  ConvertResponse,
+  BulkConvertResponse,
+  SpreadResponse,
+  RouteResponse,
+} from './types/public';
 
 /**
  * The Cotizave API v2 client.
@@ -37,12 +46,15 @@ import type { ConvertResponse, BulkConvertResponse, SpreadResponse, RouteRespons
  * const rates = await client.rates.list('AR');
  */
 export class Cotizave {
-  /** Resolved, validated configuration (read-only). */
-  readonly config: Readonly<ResolvedConfig>;
+  /**
+   * Resolved, validated configuration (read-only). The API key is deliberately
+   * left out, so logging or serializing the client never exposes it.
+   */
+  readonly config: PublicConfig;
 
-  private readonly transport: Transport;
-  private readonly fx: FxToolsResource;
-  private readonly conversion: ConversionResource;
+  readonly #transport: Transport;
+  readonly #fx: FxToolsResource;
+  readonly #conversion: ConversionResource;
 
   /** Per-country rate reads and the global officials feed. */
   readonly rates: RatesResource;
@@ -62,50 +74,68 @@ export class Cotizave {
   readonly crypto: CryptoResource;
 
   constructor(options: CotizaveOptions) {
-    this.config = Object.freeze(resolveConfig(options));
-    this.transport = new Transport(this.config);
+    const resolved = resolveConfig(options);
+    this.config = Object.freeze({
+      baseUrl: resolved.baseUrl,
+      timeout: resolved.timeout,
+      maxRetries: resolved.maxRetries,
+      maxRetryDelay: resolved.maxRetryDelay,
+      maxResponseBytes: resolved.maxResponseBytes,
+      userAgent: resolved.userAgent,
+    });
 
-    this.rates = new RatesResource(this.transport);
-    this.history = new HistoryResource(this.transport);
-    this.countries = new CountriesResource(this.transport);
-    this.currencies = new CurrenciesResource(this.transport);
-    this.banks = new BanksResource(this.transport);
-    this.issuers = new IssuersResource(this.transport);
-    this.holidays = new HolidaysResource(this.transport);
-    this.crypto = new CryptoResource(this.transport);
+    const transport = new Transport(resolved);
+    this.#transport = transport;
 
-    this.conversion = new ConversionResource(this.transport);
-    this.fx = new FxToolsResource(this.transport);
+    this.rates = new RatesResource(transport);
+    this.history = new HistoryResource(transport);
+    this.countries = new CountriesResource(transport);
+    this.currencies = new CurrenciesResource(transport);
+    this.banks = new BanksResource(transport);
+    this.issuers = new IssuersResource(transport);
+    this.holidays = new HolidaysResource(transport);
+    this.crypto = new CryptoResource(transport);
+
+    this.#conversion = new ConversionResource(transport);
+    this.#fx = new FxToolsResource(transport);
   }
 
   /** Converts a single amount. See {@link ConversionResource.convert}. */
   convert(options: ConvertOptions, config?: RequestConfig): Promise<ConvertResponse> {
-    return this.conversion.convert(options, config);
+    return this.#conversion.convert(options, config);
   }
 
   /** Converts up to 50 items in one call. See {@link ConversionResource.convertBulk}. */
   convertBulk(options: BulkConvertOptions, config?: RequestConfig): Promise<BulkConvertResponse> {
-    return this.conversion.convertBulk(options, config);
+    return this.#conversion.convertBulk(options, config);
   }
 
   /** The country's rate catalog (no prices). Growth+. */
   markets(country: string, config?: RequestConfig): Promise<MarketsCatalog> {
-    return this.fx.markets(country, config);
+    return this.#fx.markets(country, config);
   }
 
   /** Spread of the official rate against another market. Growth+. */
-  spread(country: string, options?: SpreadOptions, config?: RequestConfig): Promise<SpreadResponse> {
-    return this.fx.spread(country, options, config);
+  spread(
+    country: string,
+    options?: SpreadOptions,
+    config?: RequestConfig,
+  ): Promise<SpreadResponse> {
+    return this.#fx.spread(country, options, config);
   }
 
   /** Best executable rate for an amount. Pro+. */
   route(country: string, options: RouteOptions, config?: RequestConfig): Promise<RouteResponse> {
-    return this.fx.route(country, options, config);
+    return this.#fx.route(country, options, config);
   }
 
   /** BCV per-bank quotations (all plans). */
-  bankRates(country: string, options?: BankRatesOptions, config?: RequestConfig): Promise<BankRatesResponse> {
-    return this.fx.bankRates(country, options, config);
+  bankRates(
+    country: string,
+    options?: BankRatesOptions,
+    config?: RequestConfig,
+  ): Promise<BankRatesResponse> {
+    return this.#fx.bankRates(country, options, config);
   }
 
   /**
@@ -114,7 +144,7 @@ export class Cotizave {
    * (`parse: 'text'`). Most code should use the typed resources above.
    */
   request<T>(options: RequestOptions): Promise<RawResult<T>> {
-    return this.transport.request<T>(options);
+    return this.#transport.request<T>(options);
   }
 
   /**
@@ -125,7 +155,7 @@ export class Cotizave {
    */
   async export(path: string, query: QueryParams & { format: 'csv' | 'xml' }): Promise<string> {
     const accept = query.format === 'csv' ? 'text/csv' : 'application/xml';
-    const result = await this.transport.request<string>({
+    const result = await this.#transport.request<string>({
       method: 'GET',
       path,
       query,

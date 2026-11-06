@@ -23,8 +23,16 @@ export class HolidaysResource extends Resource {
    * @example
    * const { holidays } = await client.holidays.list('AR', { year: 2026 });
    */
-  list(country: string, options: { year?: number } = {}, config?: RequestConfig): Promise<HolidaysYear> {
-    return this.transport.get<HolidaysYear>(`/v2/holidays/${cc(country)}`, { year: options.year }, config);
+  list(
+    country: string,
+    options: { year?: number } = {},
+    config?: RequestConfig,
+  ): Promise<HolidaysYear> {
+    return this.transport.get<HolidaysYear>(
+      `/v2/holidays/${cc(country)}`,
+      { year: options.year },
+      config,
+    );
   }
 
   /** Whether a given date is a holiday. */
@@ -48,7 +56,11 @@ export class HolidaysResource extends Resource {
     options: { days: number; from?: string },
     config?: RequestConfig,
   ): Promise<BusinessDaysResult> {
-    if (!(typeof options?.days === 'number' && Number.isInteger(options.days) && options.days >= 0)) {
+    if (!(
+      typeof options?.days === 'number' &&
+      Number.isInteger(options.days) &&
+      options.days >= 0
+    )) {
       throw new TypeError('businessDays: `days` must be a non-negative integer.');
     }
     return this.transport.get<BusinessDaysResult>(

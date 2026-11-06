@@ -17,17 +17,20 @@ npm install
 
 ```bash
 npm run generate:types   # regenerate src/types/generated.ts from the OpenAPI spec
+npm run format           # Prettier (write)
 npm run lint             # ESLint
 npm run typecheck        # tsc --noEmit
 npm run test             # unit + contract tests (Vitest)
 npm run test:types       # compile-only type inference tests
 npm run build            # dual ESM/CJS build + d.ts (tsup)
+npm run check:package    # publint + are-the-types-wrong on the packed tarball
 ```
 
 Before opening a PR, run the full gate:
 
 ```bash
-npm run lint && npm run typecheck && npm run test && npm run build && npm pack --dry-run
+npm run format:check && npm run lint && npm run typecheck && npm run test:types \
+  && npm run test && npm run build && npm run check:package
 ```
 
 ## Source of truth: the v2 contract

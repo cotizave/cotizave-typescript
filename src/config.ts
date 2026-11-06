@@ -1,8 +1,5 @@
 /** Minimal `fetch` signature the SDK depends on (native `fetch` satisfies it). */
-export type FetchLike = (
-  input: string,
-  init?: RequestInit,
-) => Promise<Response>;
+export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 /** Options accepted by the {@link Cotizave} constructor. */
 export interface CotizaveOptions {
@@ -76,13 +73,19 @@ export interface ResolvedConfig {
   userAgent: string;
 }
 
+/**
+ * The configuration exposed on `client.config`. It omits the API key and the
+ * `fetch` implementation, so logging or serializing a client is always safe.
+ */
+export type PublicConfig = Readonly<Omit<ResolvedConfig, 'apiKey' | 'fetch'>>;
+
 export const DEFAULT_BASE_URL = 'https://api.cotizave.com';
 export const DEFAULT_TIMEOUT = 30_000;
 export const DEFAULT_MAX_RETRIES = 2;
 export const DEFAULT_MAX_RETRY_DELAY = 60_000;
 export const DEFAULT_MAX_RESPONSE_BYTES = 25_000_000;
 
-/** SDK version, kept in sync with package.json by the build. */
+/** SDK version. A test fails if this drifts from `version` in package.json. */
 export const SDK_VERSION = '0.1.0';
 
 function baseUserAgent(): string {
@@ -110,7 +113,7 @@ export function resolveConfig(options: CotizaveOptions): ResolvedConfig {
   const fetchImpl = options.fetch ?? (globalThis.fetch as FetchLike | undefined);
   if (typeof fetchImpl !== 'function') {
     throw new Error(
-      'Cotizave: no global `fetch` is available. Use Node 18+ (22+ recommended) or pass a `fetch` implementation.',
+      'Cotizave: no global `fetch` is available. Use Node.js 22+ or pass a `fetch` implementation.',
     );
   }
 
@@ -130,7 +133,9 @@ export function resolveConfig(options: CotizaveOptions): ResolvedConfig {
       );
     }
   } else if (protocol !== 'https:') {
-    throw new Error(`Cotizave: \`baseUrl\` must be an http(s) URL, got: ${String(options.baseUrl)}`);
+    throw new Error(
+      `Cotizave: \`baseUrl\` must be an http(s) URL, got: ${String(options.baseUrl)}`,
+    );
   }
 
   const timeout = numberOption(options.timeout, DEFAULT_TIMEOUT, 'timeout', 1);
@@ -164,7 +169,12 @@ export function resolveConfig(options: CotizaveOptions): ResolvedConfig {
   };
 }
 
-function numberOption(value: number | undefined, fallback: number, name: string, min: number): number {
+function numberOption(
+  value: number | undefined,
+  fallback: number,
+  name: string,
+  min: number,
+): number {
   if (value === undefined) return fallback;
   if (typeof value !== 'number' || !Number.isFinite(value) || value < min) {
     throw new Error(`Cotizave: \`${name}\` must be a finite number >= ${min}.`);

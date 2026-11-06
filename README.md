@@ -48,10 +48,10 @@ All options:
 const client = new Cotizave({
   apiKey: process.env.COTIZAVE_API_KEY!,
   baseUrl: 'https://api.cotizave.com', // default
-  timeout: 30_000,                     // ms, default 30s
-  maxRetries: 2,                       // additional retries for GETs, default 2
-  maxRetryDelay: 60_000,               // total retry-wait budget per call, ms
-  maxResponseBytes: 25_000_000,        // response body cap, default 25 MB
+  timeout: 30_000, // ms, default 30s
+  maxRetries: 2, // additional retries for GETs, default 2
+  maxRetryDelay: 60_000, // total retry-wait budget per call, ms
+  maxResponseBytes: 25_000_000, // response body cap, default 25 MB
   // allowInsecureHttp: true,          // permit an http:// baseUrl (local testing only)
   // fetch: customFetch,               // defaults to global fetch
   // userAgent: 'my-app/1.0.0',        // appended to the SDK User-Agent
@@ -167,10 +167,10 @@ plan being allowed to read it.
 ## Markets, spread, route & bank rates
 
 ```ts
-const catalog = await client.markets('VE');                       // Growth+
+const catalog = await client.markets('VE'); // Growth+
 const spread = await client.spread('VE', { against: 've-paralelo' }); // Growth+
 const route = await client.route('VE', { from: 'USD', to: 'VES', amount: 100 }); // Pro+
-const banks = await client.bankRates('VE', { bank: '0105' });     // all plans
+const banks = await client.bankRates('VE', { bank: '0105' }); // all plans
 ```
 
 The backend resolves routes and spreads; the SDK does not compute them.
@@ -178,15 +178,15 @@ The backend resolves routes and spreads; the SDK does not compute them.
 ## Catalogs & calendars
 
 ```ts
-await client.countries.list();          // Pro+
-await client.countries.get('BR');       // Pro+
-await client.currencies.list();         // Pro+
-await client.currencies.get('USD');     // Pro+
+await client.countries.list(); // Pro+
+await client.countries.get('BR'); // Pro+
+await client.currencies.list(); // Pro+
+await client.currencies.get('USD'); // Pro+
 
 await client.banks.list('VE', { q: 'mercantil' });
 await client.banks.get('VE', '0105');
 
-await client.issuers.list();            // all plans
+await client.issuers.list(); // all plans
 
 await client.holidays.list('AR', { year: 2026 });
 await client.holidays.check('AR', '2026-05-01');
@@ -224,18 +224,18 @@ try {
 }
 ```
 
-| Status | Error class | Meaning |
-| --- | --- | --- |
-| 400 | `CotizaveBadRequestError` | Invalid parameters or formats |
-| 401 | `CotizaveAuthenticationError` | Missing / invalid / revoked key |
-| 402 | `CotizaveFeatureNotInPlanError` | Feature not in your plan |
-| 403 | `CotizaveForbiddenError` | Account restriction / out of retention |
-| 404 | `CotizaveNotFoundError` | Resource / rate not found |
-| 406 | `CotizaveNotAcceptableError` | Format cannot represent the response |
-| 422 | `CotizaveUnprocessableError` | No usable reference right now |
-| 429 | `CotizaveRateLimitError` | Rate limited (see below) |
-| 5xx | `CotizaveServerError` | Server-side failure |
-| — | `CotizaveConnectionError` / `CotizaveTimeoutError` | No response (network / timeout) |
+| Status | Error class                                        | Meaning                                |
+| ------ | -------------------------------------------------- | -------------------------------------- |
+| 400    | `CotizaveBadRequestError`                          | Invalid parameters or formats          |
+| 401    | `CotizaveAuthenticationError`                      | Missing / invalid / revoked key        |
+| 402    | `CotizaveFeatureNotInPlanError`                    | Feature not in your plan               |
+| 403    | `CotizaveForbiddenError`                           | Account restriction / out of retention |
+| 404    | `CotizaveNotFoundError`                            | Resource / rate not found              |
+| 406    | `CotizaveNotAcceptableError`                       | Format cannot represent the response   |
+| 422    | `CotizaveUnprocessableError`                       | No usable reference right now          |
+| 429    | `CotizaveRateLimitError`                           | Rate limited (see below)               |
+| 5xx    | `CotizaveServerError`                              | Server-side failure                    |
+| —      | `CotizaveConnectionError` / `CotizaveTimeoutError` | No response (network / timeout)        |
 
 ## Rate limits & retries
 
@@ -308,6 +308,12 @@ if (next.notModified) {
   never logged, persisted, or placed in error messages by the SDK.
 - The SDK makes no calls other than to the configured `baseUrl`, and sends no
   telemetry.
+- Requests are pinned to the configured origin and redirects are refused, so the
+  key cannot be forwarded to another host.
+- `baseUrl` must be `https://`. An `http://` URL is rejected unless you pass
+  `allowInsecureHttp: true` (local testing only).
+- `client.config` never contains the API key, so logging or serializing the client
+  is safe.
 
 See [SECURITY.md](./SECURITY.md).
 

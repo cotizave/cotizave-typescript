@@ -65,22 +65,26 @@ export interface RawResult<T> {
  * modules sit on top of this; most users never call it directly.
  */
 export class Transport {
+  // Runtime-private (`#`) so the API key never shows up when a consumer logs,
+  // inspects or serializes the client.
+  readonly #config: ResolvedConfig;
   /** Fixed origin of the configured base URL; every request must stay on it. */
-  private readonly origin: string;
+  readonly #origin: string;
 
-  constructor(private readonly config: ResolvedConfig) {
-    this.origin = new URL(config.baseUrl).origin;
+  constructor(config: ResolvedConfig) {
+    this.#config = config;
+    this.#origin = new URL(config.baseUrl).origin;
   }
 
   /** JSON convenience: returns the parsed body, throwing on non-2xx. */
-  async get<T>(path: string, query?: QueryParams, opts?: Partial<RequestOptions>): Promise<T> {
-    const result = await this.request<T>({ method: 'GET', path, ...(query ? { query } : {}), ...opts });
+  async get<T>(path: string, query?: QueryParams, config?: RequestConfig): Promise<T> {
+    const result = await this.request<T>({ method: 'GET', path, query, ...pickConfig(config) });
     return result.data as T;
   }
 
   /** JSON convenience for POST. Not retried (the result may not be idempotent). */
-  async post<T>(path: string, body: unknown, opts?: Partial<RequestOptions>): Promise<T> {
-    const result = await this.request<T>({ method: 'POST', path, body, ...opts });
+  async post<T>(path: string, body: unknown, config?: RequestConfig): Promise<T> {
+    const result = await this.request<T>({ method: 'POST', path, body, ...pickConfig(config) });
     return result.data as T;
   }
 
@@ -92,8 +96,8 @@ export class Transport {
     const method = options.method ?? 'GET';
     const idempotent = method === 'GET';
     const url = this.buildUrl(options.path, options.query);
-    const budget = this.config.maxRetryDelay;
-    const maxRetries = options.maxRetries ?? this.config.maxRetries;
+    const budget = this.#config.maxRetryDelay;
+    const maxRetries = options.maxRetries ?? this.#config.maxRetries;
     let spent = 0;
     let attempt = 0;
 
@@ -130,7 +134,7 @@ export class Transport {
     options: RequestOptions,
   ): Promise<RawResult<T>> {
     const controller = new AbortController();
-    const timeoutMs = options.timeout ?? this.config.timeout;
+    const timeoutMs = options.timeout ?? this.#config.timeout;
     const onExternalAbort = () => controller.abort(options.signal?.reason);
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -143,8 +147,12 @@ export class Transport {
       else options.signal.addEventListener('abort', onExternalAbort, { once: true });
     }
 
+    // Call fetch unbound: invoking it as a method of the config object would give
+    // it the wrong `this`, which some runtimes reject ("Illegal invocation").
+    const { fetch: doFetch } = this.#config;
+
     try {
-      const response = await this.config.fetch(url, this.buildInit(method, options, controller.signal));
+      const response = await doFetch(url, this.buildInit(method, options, controller.signal));
       // Read the body inside this try so the timeout and the caller's abort
       // signal still cover a slow or hung body, not just the headers phase.
       return await this.handleResponse<T>(response, options);
@@ -176,7 +184,10 @@ export class Transport {
     }
   }
 
-  private async handleResponse<T>(response: Response, options: RequestOptions): Promise<RawResult<T>> {
+  private async handleResponse<T>(
+    response: Response,
+    options: RequestOptions,
+  ): Promise<RawResult<T>> {
     const meta = buildMeta(response.status, response.headers);
 
     // 304: no body to read; let the caller reuse its cached copy.
@@ -185,7 +196,7 @@ export class Transport {
     }
 
     const parse = options.parse ?? 'json';
-    const maxBytes = options.maxResponseBytes ?? this.config.maxResponseBytes;
+    const maxBytes = options.maxResponseBytes ?? this.#config.maxResponseBytes;
     const text = await this.readBodyCapped(response, maxBytes);
 
     if (response.ok) {
@@ -255,13 +266,13 @@ export class Transport {
   }
 
   private buildUrl(path: string, query?: QueryParams): string {
-    const url = new URL(this.config.baseUrl + path);
+    const url = new URL(this.#config.baseUrl + path);
     // A `path` supplied to the low-level API must never change the host. Values
     // like `@evil.com/...` or `.evil.com/...` parse into a different origin and
     // would send the X-API-Key header there. Reject anything off-origin.
-    if (url.origin !== this.origin) {
+    if (url.origin !== this.#origin) {
       throw new CotizaveError({
-        message: `Refusing to send a request to a different origin (${url.origin}). A request path must stay on ${this.origin}.`,
+        message: `Refusing to send a request to a different origin (${url.origin}). A request path must stay on ${this.#origin}.`,
         code: 'invalid_request_path',
       });
     }
@@ -280,9 +291,9 @@ export class Transport {
     signal: AbortSignal,
   ): RequestInit {
     const headers: Record<string, string> = {
-      'X-API-Key': this.config.apiKey,
+      'X-API-Key': this.#config.apiKey,
       Accept: options.accept ? assertHeaderValue(options.accept, 'accept') : 'application/json',
-      'User-Agent': this.config.userAgent,
+      'User-Agent': this.#config.userAgent,
     };
     if (options.ifNoneMatch) {
       headers['If-None-Match'] = assertHeaderValue(options.ifNoneMatch, 'ifNoneMatch');
@@ -298,6 +309,15 @@ export class Transport {
     }
     return init;
   }
+}
+
+/**
+ * Copies only the known per-call fields, so an object carrying extra keys can
+ * never override the method, path or body of a request.
+ */
+function pickConfig(config: RequestConfig | undefined): RequestConfig {
+  if (!config) return {};
+  return { signal: config.signal, timeout: config.timeout, maxRetries: config.maxRetries };
 }
 
 function tryParseJson(text: string): { ok: true; value: unknown } | { ok: false } {

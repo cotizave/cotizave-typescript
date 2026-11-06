@@ -32,11 +32,7 @@ export function isRetryable(error: unknown, idempotent: boolean): boolean {
  * backoff with full jitter. Returns `null` when honoring the server hint would
  * exceed the remaining time budget (caller should stop retrying).
  */
-export function nextDelayMs(
-  error: unknown,
-  attempt: number,
-  budgetLeftMs: number,
-): number | null {
+export function nextDelayMs(error: unknown, attempt: number, budgetLeftMs: number): number | null {
   if (error instanceof CotizaveRateLimitError) {
     const info = error.rateLimit;
     const raw =

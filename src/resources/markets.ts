@@ -47,7 +47,11 @@ export class FxToolsResource extends Resource {
   }
 
   /** The spread of the official rate against another market. Growth+. */
-  spread(country: string, options: SpreadOptions = {}, config?: RequestConfig): Promise<SpreadResponse> {
+  spread(
+    country: string,
+    options: SpreadOptions = {},
+    config?: RequestConfig,
+  ): Promise<SpreadResponse> {
     return this.transport.get<SpreadResponse>(
       `/v2/fx/${cc(country)}/spread`,
       {
@@ -77,7 +81,11 @@ export class FxToolsResource extends Resource {
   }
 
   /** BCV per-bank quotations (all plans). Optionally filtered by bank code. */
-  bankRates(country: string, options: BankRatesOptions = {}, config?: RequestConfig): Promise<BankRatesResponse> {
+  bankRates(
+    country: string,
+    options: BankRatesOptions = {},
+    config?: RequestConfig,
+  ): Promise<BankRatesResponse> {
     return this.transport.get<BankRatesResponse>(
       `/v2/fx/${cc(country)}/bank-rates`,
       { bank: options.bank },

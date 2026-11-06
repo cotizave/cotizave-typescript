@@ -9,17 +9,17 @@ import { NextResponse } from 'next/server';
 // One client per server process.
 const client = new Cotizave({ apiKey: process.env.COTIZAVE_API_KEY! });
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ cc: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ cc: string }> }) {
   const { cc } = await params;
   try {
     const data = await client.rates.list(cc);
     return NextResponse.json(data);
   } catch (err) {
     if (err instanceof CotizaveError) {
-      return NextResponse.json({ code: err.code, message: err.message }, { status: err.status || 502 });
+      return NextResponse.json(
+        { code: err.code, message: err.message },
+        { status: err.status || 502 },
+      );
     }
     return NextResponse.json({ code: 'internal_error' }, { status: 500 });
   }

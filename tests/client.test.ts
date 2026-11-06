@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { inspect } from 'node:util';
 import { describe, it, expect } from 'vitest';
-import { Cotizave, DEFAULT_BASE_URL } from '../src/index';
+import { Cotizave, DEFAULT_BASE_URL, SDK_VERSION } from '../src/index';
 import { harness, always } from './helpers';
 
 describe('constructor and configuration', () => {
@@ -73,5 +75,29 @@ describe('request building', () => {
     expect(url.pathname).toBe('/v2/fx/rates');
     expect(url.searchParams.get('symbols')).toBe('BRL,EUR');
     expect(url.searchParams.get('format')).toBe('map');
+  });
+});
+
+describe('public-library hygiene', () => {
+  it('keeps SDK_VERSION in sync with package.json', () => {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string;
+    };
+    expect(SDK_VERSION).toBe(pkg.version);
+  });
+
+  it('never exposes the API key when the client is logged or serialized', () => {
+    const client = new Cotizave({ apiKey: 'SECRET-KEY-123' });
+    expect(inspect(client, { depth: 10, showHidden: true })).not.toContain('SECRET-KEY-123');
+    expect(JSON.stringify(client)).not.toContain('SECRET-KEY-123');
+    expect('apiKey' in client.config).toBe(false);
+  });
+
+  it('ignores unknown keys in per-call config (cannot override path or method)', async () => {
+    const { client, calls } = harness(always({ body: { country: 'AR', rates: [] } }));
+    const hostile = { timeout: 5_000, path: '/v2/issuers', method: 'POST' } as { timeout: number };
+    await client.rates.list('AR', {}, hostile);
+    expect(calls[0]!.method).toBe('GET');
+    expect(new URL(calls[0]!.url).pathname).toBe('/v2/fx/ar/rates');
   });
 });

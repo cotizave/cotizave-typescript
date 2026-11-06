@@ -18,7 +18,9 @@ describe('F1 — a request path cannot change the origin (no key leak)', () => {
       expect(err.code).toBe('invalid_request_path');
     }
     // export() goes through the same guard.
-    const err2 = (await client.export('@evil.com/x', { format: 'csv' }).catch((e) => e)) as CotizaveError;
+    const err2 = (await client
+      .export('@evil.com/x', { format: 'csv' })
+      .catch((e) => e)) as CotizaveError;
     expect(err2.code).toBe('invalid_request_path');
     expect(calls.length).toBe(0); // fetch was never called for any hostile path
   });
@@ -58,7 +60,12 @@ describe('F2 — redirects are not followed (no cross-origin key forwarding)', (
     await listen(redirector);
     servers.push(attacker, redirector);
 
-    const client = new Cotizave({ apiKey: 'SECRET-KEY', baseUrl: `http://127.0.0.1:${port(redirector)}`, allowInsecureHttp: true, maxRetries: 0 });
+    const client = new Cotizave({
+      apiKey: 'SECRET-KEY',
+      baseUrl: `http://127.0.0.1:${port(redirector)}`,
+      allowInsecureHttp: true,
+      maxRetries: 0,
+    });
     const err = await client.rates.list('VE').catch((e) => e);
 
     expect(err).toBeInstanceOf(CotizaveConnectionError); // redirect became an error
@@ -91,10 +98,15 @@ describe('F3 — the timeout covers a slow/hung response body (loopback)', () =>
 
 describe('hardening — insecure http baseUrl is gated behind an opt-in', () => {
   it('rejects an http baseUrl by default', () => {
-    expect(() => new Cotizave({ apiKey: 'k', baseUrl: 'http://api.example.com' })).toThrow(/cleartext|https/i);
+    expect(() => new Cotizave({ apiKey: 'k', baseUrl: 'http://api.example.com' })).toThrow(
+      /cleartext|https/i,
+    );
   });
   it('allows http when allowInsecureHttp is true', () => {
-    expect(() => new Cotizave({ apiKey: 'k', baseUrl: 'http://127.0.0.1:8080', allowInsecureHttp: true })).not.toThrow();
+    expect(
+      () =>
+        new Cotizave({ apiKey: 'k', baseUrl: 'http://127.0.0.1:8080', allowInsecureHttp: true }),
+    ).not.toThrow();
   });
   it('always allows https', () => {
     expect(() => new Cotizave({ apiKey: 'k', baseUrl: 'https://api.example.com' })).not.toThrow();

@@ -64,7 +64,11 @@ describe('error body details', () => {
 
   it('keeps the status when a proxy returns non-JSON (HTML)', async () => {
     const { client } = harness(
-      always({ status: 502, body: '<html>Bad Gateway</html>', headers: { 'content-type': 'text/html' } }),
+      always({
+        status: 502,
+        body: '<html>Bad Gateway</html>',
+        headers: { 'content-type': 'text/html' },
+      }),
       { maxRetries: 0 },
     );
     const err = (await client.rates.list('AR').catch((e) => e)) as CotizaveError;
@@ -75,7 +79,11 @@ describe('error body details', () => {
 
   it('exposes response headers and request id on the error', async () => {
     const { client } = harness(
-      always({ status: 404, body: { code: 'rate_not_found', message: 'no' }, headers: { 'x-request-id': 'req-1' } }),
+      always({
+        status: 404,
+        body: { code: 'rate_not_found', message: 'no' },
+        headers: { 'x-request-id': 'req-1' },
+      }),
       { maxRetries: 0 },
     );
     const err = (await client.rates.get('CO', 'nope').catch((e) => e)) as CotizaveError;
@@ -89,8 +97,16 @@ describe('rate limit error', () => {
     const { client } = harness(
       always({
         status: 429,
-        body: { code: 'rate_limit_exceeded', message: 'Monthly limit exceeded.', details: { kind: 'monthly' } },
-        headers: { 'x-ratelimit-scope': 'monthly', 'retry-after': '3600', 'x-ratelimit-remaining': '0' },
+        body: {
+          code: 'rate_limit_exceeded',
+          message: 'Monthly limit exceeded.',
+          details: { kind: 'monthly' },
+        },
+        headers: {
+          'x-ratelimit-scope': 'monthly',
+          'retry-after': '3600',
+          'x-ratelimit-remaining': '0',
+        },
       }),
       { maxRetries: 0 },
     );
@@ -107,7 +123,11 @@ describe('rate limit error', () => {
       always({
         status: 429,
         body: { code: 'rate_limit_exceeded', message: 'Too fast.', details: { kind: 'burst' } },
-        headers: { 'x-ratelimit-scope': 'burst', 'retry-after': '1', 'x-ratelimit-retry-after-ms': '47' },
+        headers: {
+          'x-ratelimit-scope': 'burst',
+          'retry-after': '1',
+          'x-ratelimit-retry-after-ms': '47',
+        },
       }),
       { maxRetries: 0 },
     );

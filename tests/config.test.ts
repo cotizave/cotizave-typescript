@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { Cotizave, CotizaveError, CotizaveConnectionError, CotizaveTimeoutError } from '../src/index';
+import {
+  Cotizave,
+  CotizaveError,
+  CotizaveConnectionError,
+  CotizaveTimeoutError,
+} from '../src/index';
 import { harness, always } from './helpers';
 
 describe('per-call overrides', () => {
@@ -8,7 +13,9 @@ describe('per-call overrides', () => {
       always({ status: 503, body: { code: 'service_unavailable', message: 'down' } }),
       { maxRetries: 3, maxRetryDelay: 50 },
     );
-    await expect(client.rates.list('AR', {}, { maxRetries: 0 })).rejects.toBeInstanceOf(CotizaveError);
+    await expect(client.rates.list('AR', {}, { maxRetries: 0 })).rejects.toBeInstanceOf(
+      CotizaveError,
+    );
     expect(calls.length).toBe(1);
   });
 
@@ -41,7 +48,9 @@ describe('per-call overrides', () => {
           init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
         }),
     });
-    await expect(client.rates.list('AR', {}, { timeout: 50 })).rejects.toBeInstanceOf(CotizaveTimeoutError);
+    await expect(client.rates.list('AR', {}, { timeout: 50 })).rejects.toBeInstanceOf(
+      CotizaveTimeoutError,
+    );
   });
 });
 
@@ -51,7 +60,9 @@ describe('maxResponseBytes', () => {
   });
 
   it('rejects a body larger than the configured cap', async () => {
-    const { client } = harness(always({ body: { big: 'x'.repeat(100) } }), { maxResponseBytes: 10 });
+    const { client } = harness(always({ body: { big: 'x'.repeat(100) } }), {
+      maxResponseBytes: 10,
+    });
     const err = (await client.rates.list('AR').catch((e) => e)) as CotizaveError;
     expect(err).toBeInstanceOf(CotizaveError);
     expect(err.code).toBe('response_too_large');

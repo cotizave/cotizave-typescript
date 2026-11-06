@@ -4,7 +4,13 @@
  * Nothing here executes.
  */
 import { Cotizave } from '../../src/index';
-import type { Rate, ConvertResponse, RatesResponse, GlobalRatesList, GlobalRatesMap } from '../../src/index';
+import type {
+  Rate,
+  ConvertResponse,
+  RatesResponse,
+  GlobalRatesList,
+  GlobalRatesMap,
+} from '../../src/index';
 
 declare const client: Cotizave;
 

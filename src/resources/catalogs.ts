@@ -7,8 +7,7 @@ type CountriesList =
   paths['/v2/countries']['get']['responses']['200']['content']['application/json'];
 type CurrenciesList =
   paths['/v2/currencies']['get']['responses']['200']['content']['application/json'];
-type BanksList =
-  paths['/v2/banks/{cc}']['get']['responses']['200']['content']['application/json'];
+type BanksList = paths['/v2/banks/{cc}']['get']['responses']['200']['content']['application/json'];
 
 /** Country catalog (Pro+). */
 export class CountriesResource extends Resource {
@@ -32,7 +31,11 @@ export class CurrenciesResource extends Resource {
 
   /** One currency by code (e.g. `USD`). */
   get(code: string, config?: RequestConfig): Promise<Currency> {
-    return this.transport.get<Currency>(`/v2/currencies/${seg(code, 'currency code')}`, undefined, config);
+    return this.transport.get<Currency>(
+      `/v2/currencies/${seg(code, 'currency code')}`,
+      undefined,
+      config,
+    );
   }
 }
 

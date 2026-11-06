@@ -123,7 +123,11 @@ export class HistoryResource extends Resource {
    * can see — use it to know which dates are safe to request.
    */
   limits(config?: RequestConfig): Promise<HistoricalLimitsResponse> {
-    return this.transport.get<HistoricalLimitsResponse>('/v2/fx/historical-limits', undefined, config);
+    return this.transport.get<HistoricalLimitsResponse>(
+      '/v2/fx/historical-limits',
+      undefined,
+      config,
+    );
   }
 
   private path(ref: RateRef): string {
