@@ -152,7 +152,7 @@ export function errorFromResponse(
   const message = hasApiError && body.message ? body.message : fallbackMessage(status);
 
   const details = hasApiError
-    ? (body.details as Record<string, unknown> | undefined)
+    ? sanitizeDetails(body.details as Record<string, unknown> | undefined)
     : rawBodyText
       ? { non_json_body: truncate(rawBodyText, 500) }
       : undefined;
@@ -165,6 +165,23 @@ export function errorFromResponse(
     ...(details ? { details } : {}),
     meta,
   });
+}
+
+/**
+ * Server-provided `details` is untrusted data handed to the consumer. Strip
+ * prototype-polluting own keys so a consumer that later merges `error.details`
+ * into another object cannot be made to pollute a prototype.
+ */
+function sanitizeDetails(
+  details: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (details == null || typeof details !== 'object') return details;
+  const clean: Record<string, unknown> = {};
+  for (const key of Object.keys(details)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+    clean[key] = (details as Record<string, unknown>)[key];
+  }
+  return clean;
 }
 
 function fallbackCode(status: number): string {

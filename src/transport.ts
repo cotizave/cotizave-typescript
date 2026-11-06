@@ -48,7 +48,14 @@ export interface RawResult<T> {
  * modules sit on top of this; most users never call it directly.
  */
 export class Transport {
-  constructor(private readonly config: ResolvedConfig) {}
+  /** Fixed origin of the configured base URL; every request must stay on it. */
+  private readonly origin: string;
+  /** Hard ceiling on a response body, to bound memory against a hostile endpoint. */
+  private static readonly MAX_RESPONSE_BYTES = 25_000_000;
+
+  constructor(private readonly config: ResolvedConfig) {
+    this.origin = new URL(config.baseUrl).origin;
+  }
 
   /** JSON convenience: returns the parsed body, throwing on non-2xx. */
   async get<T>(path: string, query?: QueryParams, opts?: Partial<RequestOptions>): Promise<T> {
@@ -111,10 +118,14 @@ export class Transport {
       else options.signal.addEventListener('abort', onExternalAbort, { once: true });
     }
 
-    let response: Response;
     try {
-      response = await this.config.fetch(url, this.buildInit(method, options, controller.signal));
+      const response = await this.config.fetch(url, this.buildInit(method, options, controller.signal));
+      // Read the body inside this try so the timeout and the caller's abort
+      // signal still cover a slow or hung body, not just the headers phase.
+      return await this.handleResponse<T>(response, options);
     } catch (cause) {
+      // Mapped API errors (non-2xx, oversize body, bad JSON) pass through intact.
+      if (cause instanceof CotizaveError) throw cause;
       if (timedOut) {
         throw new CotizaveTimeoutError({
           message: `Request to ${url} timed out after ${timeoutMs}ms.`,
@@ -138,8 +149,6 @@ export class Transport {
       clearTimeout(timer);
       options.signal?.removeEventListener('abort', onExternalAbort);
     }
-
-    return this.handleResponse<T>(response, options);
   }
 
   private async handleResponse<T>(response: Response, options: RequestOptions): Promise<RawResult<T>> {
@@ -151,7 +160,7 @@ export class Transport {
     }
 
     const parse = options.parse ?? 'json';
-    const text = await safeText(response);
+    const text = await this.readBodyCapped(response);
 
     if (response.ok) {
       if (parse === 'text') {
@@ -179,8 +188,57 @@ export class Transport {
     throw errorFromResponse(response.status, body, meta, parsed.ok ? undefined : text);
   }
 
+  /**
+   * Reads the response body as text while enforcing a byte ceiling, so a
+   * hostile or MITM'd endpoint cannot exhaust memory (including via a
+   * decompression bomb, which native fetch inflates). The read stays tied to
+   * the request signal, so a timeout/abort cancels it.
+   */
+  private async readBodyCapped(response: Response): Promise<string> {
+    const body = response.body;
+    if (!body) {
+      // No stream (e.g. some mocked responses): fall back to text(), still bounded in practice.
+      try {
+        return await response.text();
+      } catch {
+        return '';
+      }
+    }
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let total = 0;
+    let out = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        total += value.byteLength;
+        if (total > Transport.MAX_RESPONSE_BYTES) {
+          await reader.cancel();
+          throw new CotizaveError({
+            message: `Response body exceeded the maximum allowed size (${Transport.MAX_RESPONSE_BYTES} bytes).`,
+            status: response.status,
+            code: 'response_too_large',
+          });
+        }
+        out += decoder.decode(value, { stream: true });
+      }
+    }
+    out += decoder.decode();
+    return out;
+  }
+
   private buildUrl(path: string, query?: QueryParams): string {
     const url = new URL(this.config.baseUrl + path);
+    // A `path` supplied to the low-level API must never change the host. Values
+    // like `@evil.com/...` or `.evil.com/...` parse into a different origin and
+    // would send the X-API-Key header there. Reject anything off-origin.
+    if (url.origin !== this.origin) {
+      throw new CotizaveError({
+        message: `Refusing to send a request to a different origin (${url.origin}). A request path must stay on ${this.origin}.`,
+        code: 'invalid_request_path',
+      });
+    }
     if (query) {
       for (const [key, value] of Object.entries(query)) {
         if (value === undefined || value === null) continue;
@@ -202,7 +260,10 @@ export class Transport {
     };
     if (options.ifNoneMatch) headers['If-None-Match'] = options.ifNoneMatch;
 
-    const init: RequestInit = { method, headers, signal };
+    // The API is not expected to redirect. Following one could forward the
+    // X-API-Key header to another origin (fetch only strips Authorization/Cookie
+    // across origins), so treat any redirect as an error instead.
+    const init: RequestInit = { method, headers, signal, redirect: 'error' };
     if (method === 'POST' && options.body !== undefined) {
       headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(options.body);
@@ -216,14 +277,6 @@ function tryParseJson(text: string): { ok: true; value: unknown } | { ok: false 
     return { ok: true, value: JSON.parse(text) };
   } catch {
     return { ok: false };
-  }
-}
-
-async function safeText(response: Response): Promise<string> {
-  try {
-    return await response.text();
-  } catch {
-    return '';
   }
 }
 

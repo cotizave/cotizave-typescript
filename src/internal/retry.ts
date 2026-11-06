@@ -39,9 +39,11 @@ export function nextDelayMs(
 ): number | null {
   if (error instanceof CotizaveRateLimitError) {
     const info = error.rateLimit;
-    const serverMs =
+    const raw =
       info?.retryAfterMs ?? (info?.retryAfter !== undefined ? info.retryAfter * 1000 : undefined);
-    if (serverMs !== undefined) {
+    if (raw !== undefined) {
+      // Clamp: a negative/garbage server hint must not skip the wait entirely.
+      const serverMs = Math.max(0, raw);
       return serverMs <= budgetLeftMs ? serverMs : null;
     }
   }
