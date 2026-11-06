@@ -46,6 +46,12 @@ export interface CotizaveOptions {
   maxResponseBytes?: number;
 
   /**
+   * Allow a non-HTTPS (`http://`) `baseUrl`. Off by default: an `http` base would
+   * send your API key in cleartext. Only enable for local testing.
+   */
+  allowInsecureHttp?: boolean;
+
+  /**
    * Custom `fetch` implementation. Defaults to the global `fetch`. Useful for
    * tests, instrumentation, or runtimes that expose a non-global fetch.
    */
@@ -109,15 +115,22 @@ export function resolveConfig(options: CotizaveOptions): ResolvedConfig {
   }
 
   let baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  let protocol: string;
   try {
-    // Normalize and reject anything that is not an absolute http(s) URL.
-    const parsed = new URL(baseUrl);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-      throw new Error('protocol');
-    }
+    protocol = new URL(baseUrl).protocol;
     baseUrl = baseUrl.replace(/\/+$/, '');
   } catch {
-    throw new Error(`Cotizave: \`baseUrl\` must be a valid http(s) URL, got: ${String(options.baseUrl)}`);
+    throw new Error(`Cotizave: \`baseUrl\` must be a valid URL, got: ${String(options.baseUrl)}`);
+  }
+  if (protocol === 'http:') {
+    // An http base would send the API key in cleartext. Require an explicit opt-in.
+    if (options.allowInsecureHttp !== true) {
+      throw new Error(
+        'Cotizave: `baseUrl` uses http:// which would send your API key in cleartext. Use https://, or set `allowInsecureHttp: true` for local testing.',
+      );
+    }
+  } else if (protocol !== 'https:') {
+    throw new Error(`Cotizave: \`baseUrl\` must be an http(s) URL, got: ${String(options.baseUrl)}`);
   }
 
   const timeout = numberOption(options.timeout, DEFAULT_TIMEOUT, 'timeout', 1);

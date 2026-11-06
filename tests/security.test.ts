@@ -58,7 +58,7 @@ describe('F2 — redirects are not followed (no cross-origin key forwarding)', (
     await listen(redirector);
     servers.push(attacker, redirector);
 
-    const client = new Cotizave({ apiKey: 'SECRET-KEY', baseUrl: `http://127.0.0.1:${port(redirector)}`, maxRetries: 0 });
+    const client = new Cotizave({ apiKey: 'SECRET-KEY', baseUrl: `http://127.0.0.1:${port(redirector)}`, allowInsecureHttp: true, maxRetries: 0 });
     const err = await client.rates.list('VE').catch((e) => e);
 
     expect(err).toBeInstanceOf(CotizaveConnectionError); // redirect became an error
@@ -78,6 +78,7 @@ describe('F3 — the timeout covers a slow/hung response body (loopback)', () =>
     const client = new Cotizave({
       apiKey: 'k',
       baseUrl: `http://127.0.0.1:${port(server)}`,
+      allowInsecureHttp: true,
       timeout: 150,
       maxRetries: 0,
     });
@@ -88,21 +89,47 @@ describe('F3 — the timeout covers a slow/hung response body (loopback)', () =>
   });
 });
 
-describe('hardening — prototype-pollution keys are stripped from error.details', () => {
-  it('drops __proto__/constructor/prototype from server-provided details', async () => {
+describe('hardening — insecure http baseUrl is gated behind an opt-in', () => {
+  it('rejects an http baseUrl by default', () => {
+    expect(() => new Cotizave({ apiKey: 'k', baseUrl: 'http://api.example.com' })).toThrow(/cleartext|https/i);
+  });
+  it('allows http when allowInsecureHttp is true', () => {
+    expect(() => new Cotizave({ apiKey: 'k', baseUrl: 'http://127.0.0.1:8080', allowInsecureHttp: true })).not.toThrow();
+  });
+  it('always allows https', () => {
+    expect(() => new Cotizave({ apiKey: 'k', baseUrl: 'https://api.example.com' })).not.toThrow();
+  });
+});
+
+describe('hardening — caller header values are validated against CR/LF injection', () => {
+  it('rejects a control character in ifNoneMatch', async () => {
+    const { client, calls } = harness(always({ body: {} }));
+    const err = (await client
+      .request({ method: 'GET', path: '/v2/fx/ve/rates', ifNoneMatch: 'etag\r\nX-Injected: 1' })
+      .catch((e) => e)) as CotizaveError;
+    expect(err).toBeInstanceOf(CotizaveError);
+    expect(err.code).toBe('invalid_header_value');
+    expect(calls.length).toBe(0);
+  });
+});
+
+describe('hardening — prototype-pollution keys are stripped from error.details (nested)', () => {
+  it('drops __proto__/constructor/prototype at top level and when nested', async () => {
     const { client } = harness(
       always({
         status: 400,
         body: {
           code: 'invalid_format',
           message: 'bad',
-          details: JSON.parse('{"field":"x","__proto__":{"polluted":true},"constructor":1}'),
+          details: JSON.parse(
+            '{"field":"x","__proto__":{"polluted":true},"constructor":1,"nested":{"__proto__":{"bad":1},"ok":2}}',
+          ),
         },
       }),
       { maxRetries: 0 },
     );
     const err = (await client.rates.list('AR').catch((e) => e)) as CotizaveError;
-    expect(err.details).toEqual({ field: 'x' });
+    expect(err.details).toEqual({ field: 'x', nested: { ok: 2 } });
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined(); // global prototype intact
   });
 });

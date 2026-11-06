@@ -281,10 +281,12 @@ export class Transport {
   ): RequestInit {
     const headers: Record<string, string> = {
       'X-API-Key': this.config.apiKey,
-      Accept: options.accept ?? 'application/json',
+      Accept: options.accept ? assertHeaderValue(options.accept, 'accept') : 'application/json',
       'User-Agent': this.config.userAgent,
     };
-    if (options.ifNoneMatch) headers['If-None-Match'] = options.ifNoneMatch;
+    if (options.ifNoneMatch) {
+      headers['If-None-Match'] = assertHeaderValue(options.ifNoneMatch, 'ifNoneMatch');
+    }
 
     // The API is not expected to redirect. Following one could forward the
     // X-API-Key header to another origin (fetch only strips Authorization/Cookie
@@ -309,4 +311,20 @@ function tryParseJson(text: string): { ok: true; value: unknown } | { ok: false 
 function errorMessage(cause: unknown): string {
   if (cause instanceof Error) return cause.message;
   return String(cause);
+}
+
+/**
+ * Guards a caller-supplied header value against CR/LF/control-character
+ * injection. A conformant `fetch` rejects these too, but a custom `fetch`
+ * (allowed via config) might not, so validate before we hand it over.
+ */
+function assertHeaderValue(value: string, name: string): string {
+  // eslint-disable-next-line no-control-regex
+  if (/[\x00-\x1F\x7F]/.test(value)) {
+    throw new CotizaveError({
+      message: `Invalid \`${name}\` value: header values must not contain control characters.`,
+      code: 'invalid_header_value',
+    });
+  }
+  return value;
 }

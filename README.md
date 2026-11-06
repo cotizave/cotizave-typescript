@@ -52,6 +52,7 @@ const client = new Cotizave({
   maxRetries: 2,                       // additional retries for GETs, default 2
   maxRetryDelay: 60_000,               // total retry-wait budget per call, ms
   maxResponseBytes: 25_000_000,        // response body cap, default 25 MB
+  // allowInsecureHttp: true,          // permit an http:// baseUrl (local testing only)
   // fetch: customFetch,               // defaults to global fetch
   // userAgent: 'my-app/1.0.0',        // appended to the SDK User-Agent
 });

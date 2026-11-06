@@ -167,19 +167,32 @@ export function errorFromResponse(
   });
 }
 
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 /**
  * Server-provided `details` is untrusted data handed to the consumer. Strip
- * prototype-polluting own keys so a consumer that later merges `error.details`
- * into another object cannot be made to pollute a prototype.
+ * prototype-polluting keys at every level so a consumer that later deep-merges
+ * `error.details` into another object cannot be made to pollute a prototype.
+ * Depth- and cycle-bounded.
  */
 function sanitizeDetails(
   details: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
   if (details == null || typeof details !== 'object') return details;
+  return sanitizeValue(details, 0, new WeakSet()) as Record<string, unknown>;
+}
+
+function sanitizeValue(value: unknown, depth: number, seen: WeakSet<object>): unknown {
+  if (value === null || typeof value !== 'object') return value;
+  if (depth >= 8 || seen.has(value as object)) return undefined; // bound recursion/cycles
+  seen.add(value as object);
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeValue(item, depth + 1, seen));
+  }
   const clean: Record<string, unknown> = {};
-  for (const key of Object.keys(details)) {
-    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
-    clean[key] = (details as Record<string, unknown>)[key];
+  for (const key of Object.keys(value as Record<string, unknown>)) {
+    if (DANGEROUS_KEYS.has(key)) continue;
+    clean[key] = sanitizeValue((value as Record<string, unknown>)[key], depth + 1, seen);
   }
   return clean;
 }
