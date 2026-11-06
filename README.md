@@ -1,5 +1,7 @@
 # @cotizave/sdk
 
+**English** · [Español](./README.es.md)
+
 Official TypeScript SDK for the **Cotizave API v2** — multi-country exchange-rate
 references, conversions, history, bank rates, catalogs and calendars.
 

@@ -60,6 +60,18 @@ key, and never use a customer's key.
 - When bumping Ky, update `THIRD_PARTY_NOTICES.md` and re-run the security tests
   (`tests/security.test.ts`), which pin the behaviors we rely on.
 
+## Bilingual documentation
+
+Prose docs are kept in English and Spanish; code, comments, identifiers and error
+`code`s stay English-only.
+
+- `README.md` (English) and `README.es.md` (Spanish) must be edited **together**
+  in the same change — they cross-link via a language switcher at the top, and npm
+  shows `README.md`.
+- The docs-page drafts `docs/sdk-typescript.mdx` and `docs/sdk-typescript.es.mdx`
+  are a pair too; update both.
+- `CHANGELOG.md`, `CONTRIBUTING.md` and `SECURITY.md` are English-only.
+
 ## Design principles
 
 - Small, predictable, strongly-typed public API; avoid `any` (prefer `unknown`).

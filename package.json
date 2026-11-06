@@ -42,6 +42,7 @@
   "files": [
     "dist",
     "README.md",
+    "README.es.md",
     "CHANGELOG.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"

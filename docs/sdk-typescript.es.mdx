@@ -1,0 +1,97 @@
+---
+title: "SDK de TypeScript"
+description: "SDK oficial de TypeScript para la API v2 de Cotizave: tasas, conversiones, histórico y más, totalmente tipado."
+---
+
+{/*
+  BORRADOR — página preparada para docs.cotizave.com (Mintlify), versión en español.
+  Par en inglés: sdk-typescript.mdx. Pendiente de aprobación del dueño antes de:
+  1) copiar ambos archivos a cotizave-docs (secciones es/ y en/),
+  2) agregarlos a la navegación en docs.json (grupo "API V2"),
+  3) PUBLICAR @cotizave/sdk en npm.
+  No anunciar el paquete como disponible hasta publicarlo.
+*/}
+
+<Note>
+  El paquete `@cotizave/sdk` todavía no está publicado en npm. Esta página se
+  activa con el primer release.
+</Note>
+
+El SDK oficial de TypeScript envuelve la **API v2** con tipos generados del
+contrato OpenAPI, errores tipados y reintentos controlados. No instalás nada más;
+corre en Node.js 22+ (ESM y CommonJS).
+
+## Instalación
+
+```bash
+npm install @cotizave/sdk
+```
+
+## Autenticación
+
+La key se envía en la cabecera `X-API-Key`. Leela de una variable de entorno del
+servidor; nunca la incluyas en código de navegador.
+
+```ts
+import { Cotizave } from '@cotizave/sdk';
+
+const client = new Cotizave({ apiKey: process.env.COTIZAVE_API_KEY! });
+```
+
+## Tasas por país
+
+```ts
+const { rates } = await client.rates.list('AR');
+const trm = await client.rates.get('CO', 'co-trm');
+```
+
+## Conversiones
+
+```ts
+const result = await client.convert({ from: 'USD', to: 'BRL', amount: 100 });
+```
+
+## Histórico
+
+```ts
+const point = await client.history.get({ country: 'CO', rateId: 'co-trm', date: '2026-10-01' });
+const series = await client.history.daily({
+  country: 'AR',
+  rateId: 'ar-official',
+  from: '2026-09-01',
+  to: '2026-09-30',
+});
+```
+
+## Manejo de errores
+
+```ts
+import { CotizaveError, CotizaveRateLimitError } from '@cotizave/sdk';
+
+try {
+  await client.rates.get('CO', 'no-existe');
+} catch (err) {
+  if (err instanceof CotizaveRateLimitError && err.isQuotaExhausted) {
+    // cuota mensual agotada
+  } else if (err instanceof CotizaveError) {
+    console.error(err.status, err.code, err.message);
+  }
+}
+```
+
+## Límites de uso
+
+El SDK respeta tanto la cuota mensual como el límite por minuto. En un `429`,
+`CotizaveRateLimitError.scope` distingue `monthly` (cuota) de `burst` (velocidad).
+Las peticiones `GET` elegibles se reintentan solas; una cuota agotada, nunca.
+
+## Seguridad de la API key
+
+Uso exclusivo del lado del servidor. En Next.js, usalo desde Route Handlers o
+Server Actions. La key viaja solo en `X-API-Key`, nunca en la URL.
+
+## Enlaces
+
+- GitHub: https://github.com/cotizave/cotizave-typescript
+- npm: https://www.npmjs.com/package/@cotizave/sdk *(disponible tras la publicación)*
+- Changelog: https://github.com/cotizave/cotizave-typescript/blob/master/CHANGELOG.md
