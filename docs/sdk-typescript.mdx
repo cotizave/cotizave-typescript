@@ -1,36 +1,36 @@
 ---
-title: "SDK de TypeScript"
-description: "SDK oficial de TypeScript para la API v2 de Cotizave: tasas, conversiones, histórico y más, con tipado estricto."
+title: "TypeScript SDK"
+description: "Official TypeScript SDK for the Cotizave API v2: rates, conversions, history and more, fully typed."
 ---
 
 {/*
-  DRAFT — página lista para docs.cotizave.com (Mintlify).
-  Pendiente de aprobación del dueño antes de:
-  1) copiar este archivo a cotizave-docs (p. ej. en/api/v2/sdk-typescript.mdx y su par en es),
-  2) agregarla a la navegación en docs.json (grupo "API V2 · Multimercado" / "API V2 · Multi-market"),
-  3) PUBLICAR @cotizave/sdk en npm.
-  No anunciar el paquete como disponible hasta publicarlo.
+  DRAFT — page prepared for docs.cotizave.com (Mintlify).
+  Pending owner approval before:
+  1) copying this file into cotizave-docs (and adding its Spanish counterpart there),
+  2) adding it to the navigation in docs.json (the "API V2" group),
+  3) PUBLISHING @cotizave/sdk to npm.
+  Do not announce the package as available until it is published.
 */}
 
 <Note>
-  El paquete `@cotizave/sdk` aún no está publicado en npm. Esta página se activará
-  cuando se publique la primera versión.
+  The `@cotizave/sdk` package is not published to npm yet. This page goes live
+  with the first release.
 </Note>
 
-El SDK oficial de TypeScript envuelve la **API v2** con tipos generados desde el
-contrato OpenAPI, errores tipados y reintentos controlados. Cero dependencias de
-runtime; funciona en Node.js 22+ (ESM y CommonJS).
+The official TypeScript SDK wraps the **API v2** with types generated from the
+OpenAPI contract, typed errors and controlled retries. Zero runtime dependencies;
+runs on Node.js 22+ (ESM and CommonJS).
 
-## Instalación
+## Installation
 
 ```bash
 npm install @cotizave/sdk
 ```
 
-## Autenticación
+## Authentication
 
-La clave se envía como encabezado `X-API-Key`. Léela desde una variable de entorno
-del servidor; nunca la incluyas en código de navegador.
+The key is sent as the `X-API-Key` header. Read it from a server-side environment
+variable; never ship it in browser code.
 
 ```ts
 import { Cotizave } from "@cotizave/sdk";
@@ -38,55 +38,55 @@ import { Cotizave } from "@cotizave/sdk";
 const client = new Cotizave({ apiKey: process.env.COTIZAVE_API_KEY! });
 ```
 
-## Tasas por país
+## Rates by country
 
 ```ts
 const { rates } = await client.rates.list("AR");
 const trm = await client.rates.get("CO", "co-trm");
 ```
 
-## Conversiones
+## Conversions
 
 ```ts
 const result = await client.convert({ from: "USD", to: "BRL", amount: 100 });
 ```
 
-## Histórico
+## History
 
 ```ts
 const point = await client.history.get({ country: "CO", rateId: "co-trm", date: "2026-10-01" });
 const series = await client.history.daily({ country: "AR", rateId: "ar-official", from: "2026-09-01", to: "2026-09-30" });
 ```
 
-## Manejo de errores
+## Error handling
 
 ```ts
 import { CotizaveError, CotizaveRateLimitError } from "@cotizave/sdk";
 
 try {
-  await client.rates.get("CO", "inexistente");
+  await client.rates.get("CO", "does-not-exist");
 } catch (err) {
   if (err instanceof CotizaveRateLimitError && err.isQuotaExhausted) {
-    // cuota mensual agotada
+    // monthly quota exhausted
   } else if (err instanceof CotizaveError) {
     console.error(err.status, err.code, err.message);
   }
 }
 ```
 
-## Límites de uso
+## Rate limits
 
-El SDK respeta la cuota mensual y el límite por minuto. En un `429`,
-`CotizaveRateLimitError.scope` distingue `monthly` (cuota) de `burst` (velocidad).
-Reintenta automáticamente los `GET` elegibles, nunca una cuota agotada.
+The SDK respects both the monthly quota and the per-minute limit. On a `429`,
+`CotizaveRateLimitError.scope` tells `monthly` (quota) from `burst` (velocity).
+Eligible `GET` requests are retried automatically; an exhausted quota never is.
 
-## Seguridad de la API key
+## API key security
 
-Uso exclusivo del lado del servidor. En Next.js, usa Route Handlers o Server
-Actions. La clave viaja solo en `X-API-Key`, nunca en la URL.
+Server-side use only. In Next.js, call it from Route Handlers or Server Actions.
+The key travels only in `X-API-Key`, never in the URL.
 
-## Enlaces
+## Links
 
 - GitHub: https://github.com/cotizave/cotizave-typescript
-- npm: https://www.npmjs.com/package/@cotizave/sdk *(disponible tras la publicación)*
+- npm: https://www.npmjs.com/package/@cotizave/sdk *(available after publication)*
 - Changelog: https://github.com/cotizave/cotizave-typescript/blob/main/CHANGELOG.md

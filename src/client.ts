@@ -78,10 +78,12 @@ export class Cotizave {
     this.config = Object.freeze({
       baseUrl: resolved.baseUrl,
       timeout: resolved.timeout,
+      historyTimeout: resolved.historyTimeout,
       maxRetries: resolved.maxRetries,
       maxRetryDelay: resolved.maxRetryDelay,
       maxResponseBytes: resolved.maxResponseBytes,
       userAgent: resolved.userAgent,
+      ...(resolved.language !== undefined ? { language: resolved.language } : {}),
     });
 
     const transport = new Transport(resolved);

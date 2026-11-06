@@ -21,6 +21,11 @@ export type RateCategory = Schemas['Category'];
 /** Country-level fields embedded in several responses. */
 export type GeoFields = Schemas['GeoFields'];
 
+/** Close of one rate on a past date (a row of `rates.snapshot`). */
+export type RatesSnapshotRow = Schemas['RatesSnapshotRow'];
+/** The full board of a country on a past date (`rates.snapshot`). */
+export type RatesSnapshotResponse = Schemas['RatesSnapshotResponse'];
+
 /** A single row of the global officials endpoint (`rates.global`). */
 export type GlobalRateRow = Schemas['GlobalRateRow'];
 /** Rich-list form of `rates.global` (default). */
@@ -32,6 +37,10 @@ export type GlobalRatesMap = Schemas['GlobalRatesMap'];
 export type HistoryPoint = Schemas['HistoryPointResponse'];
 /** A daily or raw history series (`history.daily` / `history.raw`). */
 export type HistoryCollection = Schemas['HistoryCollection'];
+/** Aggregates of a period (min, max, avg, moving averages…). */
+export type HistoryStats = Schemas['HistoryStats'];
+/** Response of `history.stats(...)`. */
+export type HistoryStatsResponse = Schemas['HistoryStatsResponse'];
 /** Coverage window of a rate's stored history. */
 export type HistoricalLimitRow = Schemas['HistoricalLimitRow'];
 /** Response of `history.limits()`. */

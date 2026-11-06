@@ -12,7 +12,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Bancos del país (identidad, sin precio) */
+        /** Banks of a country (identity, no price) */
         get: {
             parameters: {
                 query?: {
@@ -21,14 +21,14 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Lista */
+                /** @description List */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -59,7 +59,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Un banco por su código oficial (SUDEBAN en VE) */
+        /** A single bank by its official code (SUDEBAN in VE) */
         get: {
             parameters: {
                 query?: {
@@ -67,7 +67,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
                     code: string;
                 };
@@ -75,7 +75,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Banco */
+                /** @description Bank */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -112,7 +112,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Países publicados. Desde Pro. */
+        /** Published countries. Pro and above. */
         get: {
             parameters: {
                 query?: {
@@ -124,7 +124,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Lista */
+                /** @description List */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -153,7 +153,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Un país publicado. Desde Pro. */
+        /** A single published country. Pro and above. */
         get: {
             parameters: {
                 query?: {
@@ -167,7 +167,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description País */
+                /** @description Country */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -204,18 +204,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Estables USDT, USDC y EURC en dólares. Desde Growth.
-         * @description Precio en dólares de las monedas estables publicadas por Cotizave,
-         *     con la misma forma de fila que `/v2/fx/{cc}/rates` (`type: crypto`,
-         *     `quote: USD`, `mid` = punto medio entre compra y venta). Se renueva cada
-         *     5 minutos. Los planes sin la función reciben el descriptor sin precio
+         * USDT, USDC and EURC stablecoins priced in US dollars. Growth and above.
+         * @description US-dollar price of the stablecoins published by Cotizave,
+         *     with the same row shape as `/v2/fx/{cc}/rates` (`type: crypto`,
+         *     `quote: USD`, `mid` = midpoint between bid and ask). Refreshed every
+         *     5 minutes. Plans without the feature receive the descriptor without a price
          *     (`available: false`, `required_plan`).
          */
         get: {
             parameters: {
                 query?: {
                     format?: components["parameters"]["format"];
-                    /** @description Id o etiqueta (usdt, stablecoin…) */
+                    /** @description Id or tag (usdt, stablecoin…) */
                     tag?: string;
                 };
                 header?: never;
@@ -224,7 +224,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Colección */
+                /** @description Collection */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -260,7 +260,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Una moneda estable (usdt-usd, usdc-usd, eurc-usd). Desde Growth. */
+        /** A single stablecoin (usdt-usd, usdc-usd, eurc-usd). Growth and above. */
         get: {
             parameters: {
                 query?: {
@@ -274,7 +274,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Tasa (incluye `fetched_at`) */
+                /** @description Rate (includes `fetched_at`) */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -301,7 +301,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin dato en este momento */
+                /** @description No data right now */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -327,7 +327,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Monedas que Cotizave cotiza (ISO 4217). Desde Pro. */
+        /** Currencies quoted by Cotizave (ISO 4217). Pro and above. */
         get: {
             parameters: {
                 query?: {
@@ -339,7 +339,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Lista */
+                /** @description List */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -368,7 +368,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Una moneda. Desde Pro. */
+        /** A single currency. Pro and above. */
         get: {
             parameters: {
                 query?: {
@@ -382,7 +382,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Moneda */
+                /** @description Currency */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -420,42 +420,42 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Cotizaciones del BCV por banco (todos los planes)
-         * @description Lo que el BCV publica en "tasas informativas del sistema bancario".
-         *     Cada fila la identifica el banco (código SUDEBAN o null), no un id de
-         *     tasa. En VE, sin filtro `bank`, `bank_rates` y `captured_at` conservan la respuesta V1:
-         *     allí `stale` significa publicación anterior. En `banks`, `stale`
-         *     significa que la cotización superó su umbral de antigüedad.
+         * BCV quotations per bank (all plans)
+         * @description What the BCV publishes as "informative rates of the banking system".
+         *     Each row is identified by the bank (SUDEBAN code or null), not by a rate
+         *     id. In VE, without the `bank` filter, `bank_rates` and `captured_at` keep the v1 response:
+         *     there `stale` means an earlier publication. In `banks`, `stale`
+         *     means the quotation exceeded its staleness threshold.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description Filtra por código SUDEBAN */
+                    /** @description Filter by SUDEBAN code */
                     bank?: string;
                     format?: components["parameters"]["format"];
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Tasas por banco */
+                /** @description Rates per bank */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": components["schemas"]["GeoFields"] & {
-                            /** @description Filas V1 con bank, buy, sell, date, stale y days_behind; solo VE y sin filtro bank. */
+                            /** @description v1 rows with bank, buy, sell, date, stale and days_behind; VE only and without the bank filter. */
                             bank_rates?: Record<string, never>[];
                             banks: components["schemas"]["BankRate"][];
                             /**
                              * Format: date-time
-                             * @description Alias V1; solo VE.
+                             * @description v1 alias; VE only.
                              */
                             captured_at?: string;
                             /** Format: date-time */
@@ -466,7 +466,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description `bank` no válido, o filtro por banco no disponible en el país (AU) */
+                /** @description Invalid `bank`, or bank filter not available for the country (AU) */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -475,7 +475,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description bcv_snapshot_unavailable en VE; bank_rates_not_available si el país no publica tasas por banco */
+                /** @description bcv_snapshot_unavailable in VE; bank_rates_not_available if the country does not publish per-bank rates */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -484,7 +484,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description bank_rates_unavailable para fuentes bancarias fuera de VE */
+                /** @description bank_rates_unavailable for bank sources outside VE */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -510,7 +510,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Catálogo de tasas del país (sin precios). Desde Growth. */
+        /** Rate catalog of a country (no prices). Growth and above. */
         get: {
             parameters: {
                 query?: {
@@ -518,14 +518,14 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Catálogo */
+                /** @description Catalog */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -557,40 +557,42 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Todas las tasas del país
-         * @description En Venezuela, las tasas restringidas por plan aparecen como descriptor
-         *     sin precio. Free recibe los campos de V1 más `id`; Basic agrega
-         *     `name`, `quote`, `stale`, `staleness_sec` y `available`; Growth y Pro
-         *     agregan `description`, `tags`, `change_24h_pct`, `vs_official_pct` y
-         *     `required_plan`. `stale_after_sec` conserva la omisión condicional de V1.
-         *     En AR, CO, PE, MX,
-         *     AU y ES todas las tasas publicadas incluyen precio en cualquier plan.
-         *     SET-FX está deshabilitado en Colombia. En VE, `?markup=tag` conserva
-         *     la variante V1 para planes con la capacidad de márgenes.
+         * All rates of a country
+         * @description In Venezuela, plan-restricted rates appear as a descriptor
+         *     without a price. Free receives the v1 fields plus `id`; Basic adds
+         *     `name`, `quote`, `stale`, `staleness_sec` and `available`; Growth and Pro
+         *     add `description`, `tags`, `change_24h_pct`, `vs_official_pct` and
+         *     `required_plan`. `stale_after_sec` keeps v1's conditional omission.
+         *     In AR, CO, PE, MX,
+         *     AU and ES every published rate includes a price on any plan.
+         *     SET-FX is disabled in Colombia. In VE, `?markup=tag` keeps
+         *     the v1 variant for plans with the markups capability.
          */
         get: {
             parameters: {
                 query?: {
                     base?: string;
-                    /** @description Filtro histórico de v2; conserva los valores de categoría interna. */
+                    /** @description Legacy v2 filter; keeps the internal category values. */
                     category?: components["schemas"]["Category"];
+                    /** @description Returns the full board as it closed on that day (RatesSnapshotResponse) instead of the live rates. Subject to the history retention of the plan. */
+                    date?: string;
                     format?: components["parameters"]["format"];
-                    /** @description Regla de margen del usuario, solo VE y planes autorizados. */
+                    /** @description User markup rule; VE and authorized plans only. */
                     markup?: string;
                     quote?: string;
-                    /** @description Id, id de v1 o alias (bcv, reference, euro…) */
+                    /** @description Id, v1 id, or alias (bcv, reference, euro…) */
                     tag?: string;
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Colección */
+                /** @description Collection */
                 200: {
                     headers: {
                         "Cache-Control"?: string;
@@ -598,7 +600,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["RatesResponse"];
+                        "application/json": components["schemas"]["RatesResponse"] | components["schemas"]["RatesSnapshotResponse"];
                     };
                 };
                 /** @description Not Modified (If-None-Match) */
@@ -631,7 +633,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Una tasa por id canónico */
+        /** A single rate by canonical id */
         get: {
             parameters: {
                 query?: {
@@ -639,16 +641,16 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
-                    /** @description Id canónico (ve-bcv). Case-insensitive. */
+                    /** @description Canonical id (ve-bcv). Case-insensitive. */
                     id: components["parameters"]["id"];
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Tasa con campos según plan; Free conserva el contrato V1 más id. */
+                /** @description Rate with plan-dependent fields; Free keeps the v1 contract plus id. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -674,7 +676,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description resource_not_found en VE sin dato, o rate_not_found / country_not_supported */
+                /** @description resource_not_found in VE when there is no data, or rate_not_found / country_not_supported */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -684,7 +686,7 @@ export interface paths {
                     };
                 };
                 429: components["responses"]["RateLimited"];
-                /** @description Tasa registrada sin dato en este momento */
+                /** @description Registered rate with no data right now */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -711,43 +713,47 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Histórico de una tasa
-         * @description `?date=` → un punto (la tasa que regía ese día). Sin `date`:
-         *     `granularity=daily` (default, sin paginación) o `raw` (paginada con
-         *     `cursor`/`limit`; las páginas avanzan hacia atrás en el tiempo y cada
-         *     una viene en orden ascendente). Retención según el plan.
+         * History of a rate
+         * @description `?date=` → a single point (the rate in effect that day). Without `date`:
+         *     `granularity=daily` (default, no pagination) or `raw` (paginated with
+         *     `cursor`/`limit`; pages move backwards in time and each
+         *     page is in ascending order). Retention depends on the plan.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description Solo raw. Opaco. */
+                    /** @description Raw only. Opaque. */
                     cursor?: string;
                     date?: string;
                     format?: components["parameters"]["format"];
                     from?: string;
                     granularity?: "daily" | "raw";
-                    /** @description Solo raw. */
+                    /** @description Raw only. */
                     limit?: number;
+                    /** @description With stats: window of the moving average; adds sma/ema to the aggregates. */
+                    ma?: number;
+                    /** @description Returns the aggregates of the period (HistoryStatsResponse) instead of the points. */
+                    stats?: "1" | "true";
                     to?: string;
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
-                    /** @description Id canónico (ve-bcv). Case-insensitive. */
+                    /** @description Canonical id (ve-bcv). Case-insensitive. */
                     id: components["parameters"]["id"];
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Punto o colección */
+                /** @description Point or collection */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["HistoryPointResponse"] | components["schemas"]["HistoryCollection"];
+                        "application/json": components["schemas"]["HistoryPointResponse"] | components["schemas"]["HistoryCollection"] | components["schemas"]["HistoryStatsResponse"];
                     };
                 };
                 400: components["responses"]["Error"];
@@ -761,7 +767,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description rate_not_found | history_not_available | sin registro */
+                /** @description rate_not_found | history_not_available | no record */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -788,7 +794,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Mejor tasa ejecutable del país. Desde Pro. */
+        /** Best executable rate of a country. Pro and above. */
         get: {
             parameters: {
                 query: {
@@ -801,14 +807,14 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Ruta */
+                /** @description Route */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -837,7 +843,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Diferencial de la oficial contra otra tasa del país. Desde Growth. */
+        /** Spread of the official rate against another rate of the country. Growth and above. */
         get: {
             parameters: {
                 query?: {
@@ -847,7 +853,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
@@ -885,22 +891,22 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Una conversión
-         * @description VE: USD/EUR ↔ VES, default `via` = la oficial de esa moneda (ve-bcv / ve-euro).
-         *     CO: USD ↔ COP, default `via` = co-trm; `date` solo con co-trm (TRM que regía ese día).
-         *     AU: USD ↔ AUD, default `via` = au-official; sin `date`.
-         *     JP: USD ↔ JPY, default `via` = jp-official; `date` con jp-official.
+         * A single conversion
+         * @description VE: USD/EUR ↔ VES, default `via` = the official rate for that currency (ve-bcv / ve-euro).
+         *     CO: USD ↔ COP, default `via` = co-trm; `date` only with co-trm (the TRM in effect that day).
+         *     AU: USD ↔ AUD, default `via` = au-official; no `date`.
+         *     JP: USD ↔ JPY, default `via` = jp-official; `date` with jp-official.
          *     LATAM (pe, py, bo, ar, br, cl, uy, mx, cr, gt, hn, do): USD ↔ local,
-         *     default `via` = {cc}-official; `date` en pe, ar, br, cl y hn.
-         *     SE/PL/CH: USD ↔ local y EUR ↔ local; default `via` = la oficial en
-         *     esa moneda ({cc}-official / {cc}-official-eur); `date` con la oficial en USD.
-         *     Con `via` explícito, una tasa EUR registrada puede convertir EUR ↔ moneda
-         *     local aunque ese país no tenga una referencia EUR predeterminada (por ejemplo,
-         *     remesas desde España en AR/CO/MX). Las remesas solo admiten EUR → local.
-         *     `via` debe coincidir con el par; no se sustituyen tasas ni se cruzan pares.
-         *     Las tasas extras del BCV CNY/TRY/RUB se publican en `/rates`, pero no son
-         *     convertibles y un `via` que las seleccione devuelve 400 con campo `via`.
-         *     `date` desde Growth y solo donde exista histórico de conversión apto.
+         *     default `via` = {cc}-official; `date` in pe, ar, br, cl and hn.
+         *     SE/PL/CH: USD ↔ local and EUR ↔ local; default `via` = the official rate in
+         *     that currency ({cc}-official / {cc}-official-eur); `date` with the USD official rate.
+         *     With an explicit `via`, a registered EUR rate can convert EUR ↔ local
+         *     currency even if that country has no default EUR reference (for example,
+         *     remittances from Spain in AR/CO/MX). Remittances only support EUR → local.
+         *     `via` must match the pair; rates are never substituted and pairs are never crossed.
+         *     The extra BCV rates CNY/TRY/RUB are published in `/rates`, but they are not
+         *     convertible, and a `via` selecting them returns 400 with field `via`.
+         *     `date` from Growth and only where suitable conversion history exists.
          */
         get: {
             parameters: {
@@ -909,10 +915,10 @@ export interface paths {
                     date?: string;
                     format?: components["parameters"]["format"];
                     from: string;
-                    /** @description Alias V1 local de via, para VE. */
+                    /** @description Local v1 alias of via, for VE. */
                     market?: string;
                     to: string;
-                    /** @description Id de v2 (ve-binance…). Solo tasas del snapshot. */
+                    /** @description v2 id (ve-binance…). Snapshot rates only. */
                     via?: string;
                 };
                 header?: never;
@@ -921,7 +927,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Conversión */
+                /** @description Conversion */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -939,8 +945,8 @@ export interface paths {
         };
         put?: never;
         /**
-         * Hasta 50 conversiones. Desde Pro. Cuenta 1 consulta.
-         * @description Acepta exactamente un objeto JSON: el body V2 con conversions o el body V1 con from, to, amounts y market. Un segundo documento JSON devuelve 400 invalid_format. La segunda variante responde con rate, market, type, updated_at, results, total_in, total_out e id.
+         * Up to 50 conversions. Pro and above. Counts as 1 request.
+         * @description Accepts exactly one JSON object: the v2 body with conversions, or the v1 body with from, to, amounts and market. A second JSON document returns 400 invalid_format. The second variant responds with rate, market, type, updated_at, results, total_in, total_out and id.
          */
         post: {
             parameters: {
@@ -971,7 +977,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Un resultado por ítem, en el mismo orden (conversión o error) */
+                /** @description One result per item, in the same order (conversion or error) */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1012,10 +1018,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Cobertura del histórico (desde/hasta) de cada tasa que el plan ve.
-         * @description Con API key cuenta cuota y trae la cobertura de cada tasa visible por el
-         *     plan (no solo la oficial). Una cuenta sin tasas con histórico recibe 200
-         *     con `limits` vacío. La variante pública solo oficiales vive en
+         * History coverage (first/last date) of every rate the plan can see.
+         * @description With an API key it counts against quota and returns the coverage of every
+         *     rate visible to the plan (not only the official one). An account with no
+         *     rates that have history receives 200 with an empty `limits`. The public, officials-only variant lives at
          *     `/v2/public/historical-limits`.
          */
         get: {
@@ -1029,7 +1035,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Cobertura */
+                /** @description Coverage */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1057,19 +1063,19 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * La oficial de cada país publicado en una sola llamada.
-         * @description `?symbols=BRL,EUR` filtra monedas (todos los planes). `?base=EUR` cambia
-         *     la base (solo planes de pago; 402 en Free). `?format=map` devuelve el mapa
-         *     compacto `{quote: mid}`; cualquier otro valor la lista rica (default).
+         * The official rate of every published country in a single call.
+         * @description `?symbols=BRL,EUR` filters currencies (all plans). `?base=EUR` changes
+         *     the base (paid plans only; 402 on Free). `?format=map` returns the compact
+         *     map `{quote: mid}`; any other value returns the rich list (default).
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description Moneda base (solo planes de pago). Default USD. */
+                    /** @description Base currency (paid plans only). Defaults to USD. */
                     base?: string;
-                    /** @description Forma de la respuesta. Default list. */
+                    /** @description Response shape. Defaults to list. */
                     format?: "list" | "map";
-                    /** @description Monedas ISO 4217 separadas por coma. */
+                    /** @description Comma-separated ISO 4217 currencies. */
                     symbols?: string;
                 };
                 header?: never;
@@ -1078,7 +1084,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Lista rica o mapa compacto, según format */
+                /** @description Rich list or compact map, depending on format */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1108,8 +1114,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Feriados (año), ¿es feriado? (date) o el próximo (from). Desde Basic en V2.
-         * @description `year`, `date` y `from` son excluyentes (400 si vienen dos).
+         * Holidays (year), is-it-a-holiday (date), or the next one (from). Basic and above.
+         * @description `year`, `date` and `from` are mutually exclusive (400 if two are sent).
          */
         get: {
             parameters: {
@@ -1121,14 +1127,14 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Según el modo */
+                /** @description Depends on the mode */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1156,7 +1162,7 @@ export interface paths {
                 400: components["responses"]["Error"];
                 402: components["responses"]["Error"];
                 403: components["responses"]["Error"];
-                /** @description holidays_not_available (año fuera de la tabla, details first_year/last_year) */
+                /** @description holidays_not_available (year outside the table; details first_year/last_year) */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -1183,7 +1189,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fecha resultante de sumar N días hábiles. Desde Basic en V2. */
+        /** Date reached by adding N business days. Basic and above. */
         get: {
             parameters: {
                 query: {
@@ -1193,14 +1199,14 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Resultado */
+                /** @description Result */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1238,9 +1244,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Directorio de instituciones que emiten las tasas oficiales. Todos los planes.
-         * @description Datos fijos de referencia (procedencia): quién emite cada oficial de los
-         *     países publicados, con qué tasas publica. Sin precios ni histórico.
+         * Directory of the institutions that issue official rates. All plans.
+         * @description Fixed reference data (provenance): who issues each official rate of the
+         *     published countries and which rates they publish. No prices or history.
          */
         get: {
             parameters: {
@@ -1253,7 +1259,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Directorio */
+                /** @description Directory */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1281,8 +1287,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Cobertura del histórico de las oficiales, sin API key (cacheado en el edge).
-         * @description Sin key, sin cuota, solo JSON, cero parámetros. Solo la oficial de cada país.
+         * History coverage of the official rates, no API key required (edge-cached).
+         * @description No key, no quota, JSON only, no parameters. Only the official rate of each country.
          */
         get: {
             parameters: {
@@ -1293,7 +1299,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Cobertura (solo oficiales) */
+                /** @description Coverage (official rates only) */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1321,8 +1327,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Directorio reducido de emisores, sin API key (cacheado en el edge).
-         * @description Sin key, sin cuota, solo JSON, cero parámetros. Subconjunto de /v2/issuers (id, nombres, tipo, países y nombre de cada tasa).
+         * Reduced issuers directory, no API key required (edge-cached).
+         * @description No key, no quota, JSON only, no parameters. A subset of /v2/issuers (id, names, kind, countries and the name of each rate).
          */
         get: {
             parameters: {
@@ -1333,7 +1339,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Directorio reducido */
+                /** @description Reduced directory */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1362,13 +1368,13 @@ export interface components {
             currency: string;
         };
         Bank: {
-            /** @description Enlace a sus cotizaciones en /v2/fx/{cc}/bank-rates?bank=; null si no hay */
+            /** @description Link to its quotations at /v2/fx/{cc}/bank-rates?bank=; null if there are none */
             bank_rates: string | null;
             code: string;
             country: string;
             name: string;
             /**
-             * @description null si la fuente no lo informa (CO)
+             * @description null if the source does not report it (CO)
              * @enum {string|null}
              */
             type: "public" | "private" | null;
@@ -1376,18 +1382,18 @@ export interface components {
         BankRate: {
             ask: number | null;
             bank: {
-                /** @description SUDEBAN; null si no hay código confiable */
+                /** @description SUDEBAN; null when there is no reliable code */
                 code: string | null;
-                /** @description Nombre tal como lo publica el BCV */
+                /** @description Name as published by the BCV */
                 name: string;
             };
             base: string;
             bid: number | null;
-            /** @description Días detrás de la última publicación */
+            /** @description Days behind the latest publication */
             days_behind: number;
             /**
              * Format: date
-             * @description Fecha valor (VE); ausente si el banco no la publica (AU)
+             * @description Value date (VE); absent if the bank does not publish it (AU)
              */
             effective_date?: string;
             mid: number;
@@ -1414,7 +1420,7 @@ export interface components {
             succeeded: number;
         };
         /**
-         * @description Valores del parámetro de filtro category; su nombre y valores se mantienen.
+         * @description Values of the category filter parameter; its name and values are kept as-is.
          * @enum {string}
          */
         Category: "official" | "interbank" | "parallel" | "securities" | "crypto_p2p" | "crypto_exchange" | "bank_board" | "cash" | "remittance" | "card" | "exchange_house" | "crypto";
@@ -1424,7 +1430,7 @@ export interface components {
             /** Format: date */
             effective_date?: string;
             from: components["schemas"]["Amount"];
-            /** @description Identificador local de la tasa usada; via conserva el id global de v2. */
+            /** @description Local identifier of the rate used; via keeps the global v2 id. */
             market: string;
             rate: number;
             stale: boolean;
@@ -1440,7 +1446,7 @@ export interface components {
             continent: string;
             currency: string;
             flag: string;
-            /** @description Según Accept-Language (es/en) */
+            /** @description Follows Accept-Language (es/en) */
             name: string;
             rates: string[];
             region: string;
@@ -1450,7 +1456,7 @@ export interface components {
         Currency: {
             code: string;
             minor_unit: number;
-            /** @description Según Accept-Language (es/en) */
+            /** @description Follows Accept-Language (es/en) */
             name: string;
             numeric_code: string;
             symbol: string;
@@ -1467,7 +1473,7 @@ export interface components {
             field?: string;
             message: string;
         };
-        /** @description Datos del país en el primer nivel. country y currency en todos los planes; la geografía solo en Pro+. */
+        /** @description Country data at the top level. country and currency on all plans; geography only on Pro+. */
         GeoFields: {
             /** @description Pro+ */
             continent?: string;
@@ -1505,13 +1511,13 @@ export interface components {
             base: string;
             /** Format: date-time */
             date: string;
-            /** @description Mapa de moneda de cotización a mid (unidades por 1 base). */
+            /** @description Map of quote currency to mid (units per 1 base). */
             rates: {
                 [key: string]: number;
             };
         };
         HistoricalLimitRow: {
-            /** @description Omitido = USD; EUR en oficiales en euro. */
+            /** @description Omitted = USD; EUR for euro-denominated official rates. */
             base?: string;
             country: string;
             days: number;
@@ -1543,7 +1549,7 @@ export interface components {
                 date: string;
                 /**
                  * Format: date-time
-                 * @description En histórico diario propio, última escritura de esa versión; en VE, captura guardada; en el respaldo TRM, hora de armado de la respuesta.
+                 * @description For own daily history, the last write of that version; in VE, the stored capture; for the TRM fallback, the time the response was built.
                  */
                 fetched_at: string;
                 mid: number;
@@ -1560,7 +1566,7 @@ export interface components {
             date: string;
             /**
              * Format: date-time
-             * @description En histórico diario propio, última escritura de esa versión; en VE, captura guardada; en el respaldo TRM, hora de armado de la respuesta.
+             * @description For own daily history, the last write of that version; in VE, the stored capture; for the TRM fallback, the time the response was built.
              */
             fetched_at: string;
             id: string;
@@ -1569,6 +1575,45 @@ export interface components {
             quote: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /** @description Aggregates of a period over the daily closes. count is the number of days with data. */
+        HistoryStats: {
+            avg: number;
+            change: number;
+            change_pct: number;
+            count: number;
+            /** @description Exponential moving average (only with ma). */
+            ema?: number;
+            first: components["schemas"]["HistoryStatsPoint"];
+            last: components["schemas"]["HistoryStatsPoint"];
+            max: number;
+            min: number;
+            /** @description Moving-average window (only with ma). */
+            period?: number;
+            /** @description Simple moving average (only with ma). */
+            sma?: number;
+            stddev: number;
+            /** @description Latest close against its EMA (only with ma). */
+            vs_ema_pct?: number;
+            /** @description Latest close against its SMA (only with ma). */
+            vs_sma_pct?: number;
+        };
+        HistoryStatsPoint: {
+            /** Format: date */
+            date: string;
+            mid: number;
+        };
+        HistoryStatsResponse: {
+            base: string;
+            /** Format: date */
+            from: string;
+            granularity: string;
+            id: string;
+            market: string;
+            quote: string;
+            stats: components["schemas"]["HistoryStats"];
+            /** Format: date */
+            to: string;
         };
         Holiday: {
             /** Format: date */
@@ -1623,11 +1668,11 @@ export interface components {
             status: string;
         };
         MarketEntry: {
-            /** @description Aliases V1 para mercados VE. */
+            /** @description v1 aliases for VE markets. */
             aliases?: string[];
             available: boolean;
             base: string;
-            /** @description Pares que /convert admite para esta tasa, independientemente del plan y de si hay precio utilizable ahora. Vacío para tasas fuera del snapshot de conversión. */
+            /** @description Pairs that /convert supports for this rate, regardless of plan and of whether a usable price exists right now. Empty for rates outside the conversion snapshot. */
             conversion_directions: {
                 from: string;
                 to: string;
@@ -1637,7 +1682,7 @@ export interface components {
             name: string;
             quote: string;
             /**
-             * @description Id del plan público mínimo que habilita la tasa; hobby = Basic, indie = Growth.
+             * @description Id of the minimum public plan that enables the rate; hobby = Basic, indie = Growth.
              * @enum {string}
              */
             required_plan: "free" | "hobby" | "indie" | "pro" | "pro_extra";
@@ -1645,35 +1690,35 @@ export interface components {
             tags: string[];
             type: components["schemas"]["RateType"];
         };
-        /** @description Campos presentes según plan. En VE los campos V1 conservan exactamente sus reglas de omisión; Free añade solo id. */
+        /** @description Fields present depend on the plan. In VE the v1 fields keep exactly their omission rules; Free only adds id. */
         Rate: {
-            /** @description VE conserva la omisión V1 si no existe precio de venta. */
+            /** @description VE keeps the v1 omission when there is no ask price. */
             ask?: number | null;
             /**
              * @description Basic+
              * @constant
              */
             available?: true;
-            /** @description En VE se omite si V1 lo omitía. */
+            /** @description In VE it is omitted if v1 omitted it. */
             base?: string;
-            /** @description VE conserva la omisión V1 si no existe precio de compra. */
+            /** @description VE keeps the v1 omission when there is no bid price. */
             bid?: number | null;
-            /** @description Growth+. Contra la última captura de hace ≥24 h */
+            /** @description Growth+. Against the latest capture from ≥24 h ago */
             change_24h_pct?: number | null;
-            /** @description Qué es la tasa, quién la publica, cada cuánto cambia y para qué se usa. Según Accept-Language (es/en; sin encabezado, en). Ausente si no hay texto. */
+            /** @description What the rate is, who publishes it, how often it changes and what it is used for. Follows Accept-Language (es/en; en when the header is absent). Absent if there is no text. */
             description?: string;
             /**
              * Format: date
-             * @description Fecha valor (solo oficiales)
+             * @description Value date (official rates only)
              */
             effective_date?: string;
             /**
              * Format: date-time
-             * @description Solo en el recurso individual
+             * @description Only on the single-rate resource
              */
             fetched_at?: string;
             id: string;
-            /** @description Identificador local estable; en VE es exactamente el market de v1. Para monedas BCV adicionales es el código ISO 4217. */
+            /** @description Stable local identifier; in VE it is exactly the v1 market. For additional BCV currencies it is the ISO 4217 code. */
             market: string;
             mid: number;
             /** @description Basic+ */
@@ -1681,41 +1726,41 @@ export interface components {
             /** @description Basic+ */
             quote?: string;
             /**
-             * @description Growth+. Id del plan público mínimo que habilita la tasa; hobby = Basic, indie = Growth.
+             * @description Growth+. Id of the minimum public plan that enables the rate; hobby = Basic, indie = Growth.
              * @enum {string}
              */
             required_plan?: "free" | "hobby" | "indie" | "pro" | "pro_extra";
-            /** @description Basic+ en /rates; Free lo conserva en /convert. */
+            /** @description Basic+ in /rates; Free keeps it in /convert. */
             stale?: boolean;
-            /** @description En VE aparece cuando V1 tenía un umbral explícito. */
+            /** @description In VE it appears when v1 had an explicit threshold. */
             stale_after_sec?: number;
-            /** @description Basic+ en /rates; Free lo conserva en /convert y /route. */
+            /** @description Basic+ in /rates; Free keeps it in /convert and /route. */
             staleness_sec?: number;
             /** @description Growth+ */
             tags?: string[];
             type: components["schemas"]["RateType"];
             /**
              * Format: date-time
-             * @description Momento del dato en la fuente
+             * @description Time of the data point at the source
              */
             updated_at: string;
-            /** @description Growth+. Contra la oficial de la misma base; null en oficiales */
+            /** @description Growth+. Against the official rate of the same base; null for official rates */
             vs_official_pct?: number | null;
         };
-        /** @description Tasa VE restringida: Free ve solo id, Basic ve identidad y available=false, Growth+ ve el descriptor completo. */
+        /** @description Restricted VE rate: Free sees only id, Basic sees identity and available=false, Growth+ sees the full descriptor. */
         RateDescriptor: {
             /** @constant */
             available?: false;
             base?: string;
-            /** @description Qué es la tasa, quién la publica, cada cuánto cambia y para qué se usa. Según Accept-Language (es/en; sin encabezado, en). Ausente si no hay texto. */
+            /** @description What the rate is, who publishes it, how often it changes and what it is used for. Follows Accept-Language (es/en; en when the header is absent). Absent if there is no text. */
             description?: string;
             id: string;
-            /** @description Identificador local estable */
+            /** @description Stable local identifier */
             market?: string;
             name?: string;
             quote?: string;
             /**
-             * @description Id del plan público mínimo que habilita la tasa; hobby = Basic, indie = Growth.
+             * @description Id of the minimum public plan that enables the rate; hobby = Basic, indie = Growth.
              * @enum {string}
              */
             required_plan?: "free" | "hobby" | "indie" | "pro" | "pro_extra";
@@ -1726,13 +1771,34 @@ export interface components {
             base: string;
             /** Format: date-time */
             fetched_at: string;
-            /** @description Cotizave Index (mismo objeto que /v1/fx/rates). Solo VE. */
+            /** @description Cotizave Index object. VE only. */
             index?: Record<string, never>;
             plan: string;
             rates: (components["schemas"]["Rate"] | components["schemas"]["RateDescriptor"])[];
         };
+        /** @description The full board of a country on a date: every rate the plan includes, as it was that day. */
+        RatesSnapshotResponse: components["schemas"]["GeoFields"] & {
+            base: string;
+            count: number;
+            /** Format: date */
+            date: string;
+            rates: components["schemas"]["RatesSnapshotRow"][];
+        };
+        /** @description Close of a rate on a past date. No change_24h or vs_official: those are relative to "now". */
+        RatesSnapshotRow: {
+            /** @description Absent when the source has no ask price. */
+            ask?: number;
+            /** @description Absent when the source has no bid price. */
+            bid?: number;
+            id: string;
+            market: string;
+            mid: number;
+            type: components["schemas"]["RateType"];
+            /** Format: date-time */
+            updated_at: string;
+        };
         /**
-         * @description Valores compatibles con v1 para VE; las clases exclusivas de v2 conservan su significado propio.
+         * @description Values compatible with v1 for VE; v2-only classes keep their own meaning.
          * @enum {string}
          */
         RateType: "reference" | "interbank" | "parallel" | "securities" | "p2p" | "crypto_exchange" | "bank_board" | "cash" | "remittance" | "card" | "exchange_house" | "crypto";
@@ -1786,11 +1852,11 @@ export interface components {
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Límite de velocidad o cuota (mismas cabeceras que v1) */
+        /** @description Rate limit or quota exceeded */
         RateLimited: {
             headers: {
                 "Retry-After"?: number;
-                /** @description Consultas por minuto del plan */
+                /** @description Requests per minute allowed by the plan */
                 "X-RateLimit-Limit-Minute"?: number;
                 "X-RateLimit-Remaining-Minute"?: number;
                 "X-RateLimit-Retry-After-Ms"?: number;
@@ -1803,10 +1869,10 @@ export interface components {
         };
     };
     parameters: {
-        /** @description ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED. */
+        /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
         cc: "ve" | "co" | "au" | "jp" | "se" | "pl" | "ch" | "pe" | "py" | "bo" | "ar" | "br" | "cl" | "uy" | "mx" | "cr" | "gt" | "hn" | "do" | "in" | "id" | "ph" | "th" | "za" | "cn" | "il" | "hk" | "ke" | "gh" | "ng" | "tr" | "ro" | "hu" | "it" | "nl" | "be" | "at" | "ie" | "fi" | "gr" | "hr" | "si" | "sk" | "ee" | "lv" | "lt" | "lu" | "mt" | "cy" | "bg" | "es" | "fr" | "de" | "pt" | "is" | "ua" | "ge" | "mk" | "md" | "am" | "uz" | "az" | "kz" | "kg";
         format: "json" | "csv" | "xml";
-        /** @description Id canónico (ve-bcv). Case-insensitive. */
+        /** @description Canonical id (ve-bcv). Case-insensitive. */
         id: string;
     };
     requestBodies: never;

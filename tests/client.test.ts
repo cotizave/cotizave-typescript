@@ -15,7 +15,7 @@ describe('constructor and configuration', () => {
   it('applies defaults', () => {
     const client = new Cotizave({ apiKey: 'k' });
     expect(client.config.baseUrl).toBe(DEFAULT_BASE_URL);
-    expect(client.config.timeout).toBe(30_000);
+    expect(client.config.timeout).toBe(5_000);
     expect(client.config.maxRetries).toBe(2);
   });
 

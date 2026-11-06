@@ -13,6 +13,11 @@ export { Cotizave } from './client';
 export {
   type CotizaveOptions,
   type PublicConfig,
+  type RetryOptions,
+  type RetryContext,
+  type RetryEvent,
+  type ResponseEvent,
+  type HttpMethod,
   type FetchLike,
   SDK_VERSION,
   DEFAULT_BASE_URL,
@@ -51,6 +56,7 @@ export type {
   HistoryPointOptions,
   HistoryDailyOptions,
   HistoryRawOptions,
+  HistoryStatsOptions,
   HistoryIterateOptions,
 } from './resources/history';
 export {
@@ -79,6 +85,8 @@ export type {
   Rate,
   RateDescriptor,
   RatesResponse,
+  RatesSnapshotRow,
+  RatesSnapshotResponse,
   RateType,
   RateCategory,
   GeoFields,
@@ -87,6 +95,8 @@ export type {
   GlobalRatesMap,
   HistoryPoint,
   HistoryCollection,
+  HistoryStats,
+  HistoryStatsResponse,
   HistoricalLimitRow,
   HistoricalLimitsResponse,
   Amount,

@@ -42,28 +42,50 @@ const client = new Cotizave({
 });
 ```
 
-All options:
+Only `apiKey` is required. Every other option has a safe default and is yours to tune:
 
 ```ts
 const client = new Cotizave({
   apiKey: process.env.COTIZAVE_API_KEY!,
-  baseUrl: 'https://api.cotizave.com', // default
-  timeout: 30_000, // ms, default 30s
-  maxRetries: 2, // additional retries for GETs, default 2
-  maxRetryDelay: 60_000, // total retry-wait budget per call, ms
-  maxResponseBytes: 25_000_000, // response body cap, default 25 MB
-  // allowInsecureHttp: true,          // permit an http:// baseUrl (local testing only)
-  // fetch: customFetch,               // defaults to global fetch
-  // userAgent: 'my-app/1.0.0',        // appended to the SDK User-Agent
+
+  // Timeouts (ms)
+  timeout: 5_000, // every request; default 5s
+  historyTimeout: 10_000, // history reads, which can be slower; default 10s
+
+  // Retries
+  maxRetries: 2, // extra attempts; 0 disables retries
+  maxRetryDelay: 10_000, // total time budget for retry waits, per call
+  retry: {
+    baseDelay: 250, // exponential backoff base
+    maxDelay: 2_000, // ceiling of a single wait
+    statuses: [408, 500, 502, 503, 504], // statuses retried for GETs
+    retryRateLimited: true, // retry per-minute 429s after Retry-After
+    // shouldRetry: ({ error, attempt, defaultDecision }) => defaultDecision,
+    // onRetry: ({ retryNumber, delayMs, error }) => log(retryNumber, delayMs),
+  },
+
+  // Request shaping
+  language: 'en', // 'en' (default) or 'es' for localized names/descriptions
+  headers: { 'X-Trace-Id': 'abc123' }, // sent with every request
+  userAgent: 'my-app/1.0.0', // appended to the SDK User-Agent
+
+  // Observability and limits
+  onResponse: ({ path, meta }) => console.log(path, meta.rateLimit.remaining),
+  maxResponseBytes: 25_000_000, // response body cap; default 25 MB
+
+  // Testing
+  // baseUrl: 'http://127.0.0.1:8080', allowInsecureHttp: true,
+  // fetch: customFetch,
 });
 ```
 
-Every default is sensible out of the box, and everything above is yours to tune.
+The timeouts are deliberately low: the API never lets a response run longer than
+10 seconds, so waiting beyond that only delays your own error handling.
 
 ### Per-call options
 
-Any method takes an optional last argument to override settings for that one call
-— pass an `AbortSignal` to cancel, a tighter `timeout`, or a different `maxRetries`:
+Any method takes an optional last argument to override settings for that one call:
+`signal`, `timeout`, `maxRetries`, `headers` and `language`.
 
 ```ts
 const controller = new AbortController();
@@ -73,6 +95,9 @@ const rates = await client.rates.list('AR', {}, { signal: controller.signal, tim
 // Methods without a filter object still take the config as the last argument:
 const trm = await client.rates.get('CO', 'co-trm', { timeout: 2_000 });
 const conv = await client.convert({ from: 'USD', to: 'BRL', amount: 100 }, { maxRetries: 0 });
+
+// Localized names for one call, plus a tracing header:
+await client.countries.get('BR', { language: 'es', headers: { 'X-Trace-Id': 'req-42' } });
 ```
 
 ## First request
@@ -94,6 +119,9 @@ const trm = await client.rates.get('CO', 'co-trm');
 // The official rate of every published country in one call.
 const global = await client.rates.global({ symbols: ['BRL', 'EUR'] });
 const map = await client.rates.global({ asMap: true }); // { "ARS": 1012.5, ... }
+
+// The whole board of a country as it closed on a past day.
+const board = await client.rates.snapshot('AR', '2026-10-01');
 ```
 
 Canonical ids, markets, sources and availability are preserved exactly as the API
@@ -155,6 +183,15 @@ if (page.next_cursor) {
 for await (const p of client.history.iterate({ country: 'VE', rateId: 've-bcv', maxPages: 10 })) {
   console.log(p.date, p.mid);
 }
+
+// Aggregates of a range, computed by Cotizave: min, max, avg, change, moving averages.
+const { stats } = await client.history.stats({
+  country: 'AR',
+  rateId: 'ar-official',
+  from: '2026-09-01',
+  to: '2026-09-30',
+  movingAverage: 7,
+});
 
 // Coverage: which dates have stored history, per rate your plan can see.
 const limits = await client.history.limits();
@@ -258,13 +295,49 @@ try {
 }
 ```
 
-By default the SDK makes **2 additional retries** for idempotent (GET) requests on
-connection errors, `5xx`, and **burst** `429`s — honoring `Retry-After` within the
-retry budget, with exponential backoff and jitter. It **never** retries a monthly
-`429` (quota), nor `4xx` errors that require changing the request, nor `POST`.
-Disable retries with `maxRetries: 0`.
+### What the SDK does on a failure
+
+By default it makes **2 additional attempts** for idempotent (GET) requests when
+there is a connection error or timeout, a `408`/`5xx`, or a **burst** `429`:
+
+- On a burst `429` it waits exactly what the server asks (`Retry-After`, or the
+  finer `X-RateLimit-Retry-After-Ms`) and gives up right away if that wait does
+  not fit in the remaining `maxRetryDelay` budget.
+- Otherwise it backs off exponentially with full jitter.
+- It **never** retries a monthly-quota `429`, a `4xx` that needs a different
+  request (`400`/`401`/`402`/`403`/`404`/`406`/`422`), a `POST`, or a call you
+  cancelled.
+
+All of it is configurable — `maxRetries`, `maxRetryDelay` and the `retry` options
+shown above — and you can take over the decision or just observe it:
+
+```ts
+const client = new Cotizave({
+  apiKey: process.env.COTIZAVE_API_KEY!,
+  maxRetries: 3,
+  retry: {
+    // Decide yourself; return undefined to keep the built-in policy.
+    shouldRetry: ({ error, attempt, defaultDecision }) =>
+      error instanceof CotizaveRateLimitError && attempt > 0 ? false : defaultDecision,
+    // See every retry before it happens.
+    onRetry: ({ retryNumber, delayMs, path }) =>
+      console.warn(`retry #${retryNumber} of ${path} in ${delayMs}ms`),
+  },
+});
+```
 
 ### Reading rate-limit metadata on success
+
+The simplest way is the `onResponse` hook, called after every HTTP exchange:
+
+```ts
+const client = new Cotizave({
+  apiKey: process.env.COTIZAVE_API_KEY!,
+  onResponse: ({ meta }) => {
+    if ((meta.rateLimit.remaining ?? Infinity) < 100) console.warn('Quota running low');
+  },
+});
+```
 
 Use the low-level `request` for full response metadata without leaving the typed API:
 

@@ -1,6 +1,11 @@
-import { Resource, cc, seg } from './base';
+import { Resource, cc, historyConfig, seg } from './base';
 import type { RequestConfig } from '../transport';
-import type { HistoryPoint, HistoryCollection, HistoricalLimitsResponse } from '../types/public';
+import type {
+  HistoryPoint,
+  HistoryCollection,
+  HistoryStatsResponse,
+  HistoricalLimitsResponse,
+} from '../types/public';
 
 interface RateRef {
   /** Country code (ISO 3166 alpha-2). */
@@ -19,6 +24,14 @@ export interface HistoryPointOptions extends RateRef {
 export interface HistoryDailyOptions extends RateRef {
   from?: string;
   to?: string;
+}
+
+/** Aggregates of a date range. */
+export interface HistoryStatsOptions extends RateRef {
+  from?: string;
+  to?: string;
+  /** Moving-average window in days (2–365). Adds `sma`/`ema` to the result. */
+  movingAverage?: number;
 }
 
 /** A single page of raw (intraday) captures. */
@@ -47,7 +60,11 @@ export class HistoryResource extends Resource {
    * await client.history.get({ country: 'CO', rateId: 'co-trm', date: '2026-10-01' });
    */
   get(options: HistoryPointOptions, config?: RequestConfig): Promise<HistoryPoint> {
-    return this.transport.get<HistoryPoint>(this.path(options), { date: options.date }, config);
+    return this.transport.get<HistoryPoint>(
+      this.path(options),
+      { date: options.date },
+      historyConfig(this.transport, config),
+    );
   }
 
   /**
@@ -64,7 +81,24 @@ export class HistoryResource extends Resource {
         from: options.from,
         to: options.to,
       },
-      config,
+      historyConfig(this.transport, config),
+    );
+  }
+
+  /**
+   * Aggregates of a date range, computed by Cotizave over the daily closes: min,
+   * max, average, standard deviation, change and (optionally) moving averages.
+   *
+   * @example
+   * const { stats } = await client.history.stats({
+   *   country: 'AR', rateId: 'ar-official', from: '2026-09-01', to: '2026-09-30', movingAverage: 7,
+   * });
+   */
+  stats(options: HistoryStatsOptions, config?: RequestConfig): Promise<HistoryStatsResponse> {
+    return this.transport.get<HistoryStatsResponse>(
+      this.path(options),
+      { stats: 1, from: options.from, to: options.to, ma: options.movingAverage },
+      historyConfig(this.transport, config),
     );
   }
 
@@ -81,7 +115,7 @@ export class HistoryResource extends Resource {
         cursor: options.cursor,
         limit: options.limit,
       },
-      config,
+      historyConfig(this.transport, config),
     );
   }
 
@@ -126,7 +160,7 @@ export class HistoryResource extends Resource {
     return this.transport.get<HistoricalLimitsResponse>(
       '/v2/fx/historical-limits',
       undefined,
-      config,
+      historyConfig(this.transport, config),
     );
   }
 

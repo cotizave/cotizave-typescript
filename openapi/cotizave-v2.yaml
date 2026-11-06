@@ -3,18 +3,16 @@ info:
   title: Cotizave API v2
   version: 2.0.0-alpha
   description: |
-    v2 por dominios (fx, banks, holidays). Países publicados: VE, AR, CO,
-    PE, MX, AU y ES,
-    detrás de API_V2_ENABLED (apagado por defecto). Lo que no está acá no está
-    implementado: ver docs/producto/v2-implementacion-2026-10-22.md.
+    Cotizave API v2, organized by domain (fx, banks, holidays, countries,
+    currencies, crypto, issuers). Anything not described here is not implemented.
 
-    - Precios: número JSON. Un lado sin dato es `null`, nunca 0.
-    - Errores: `{code, message, field?, details?}`, siempre JSON (también si se
-      pidió CSV o XML). Mismos status y cabeceras de límite que v1.
-    - Parámetros desconocidos: `400 unknown_parameter`.
-    - Parámetros de consulta repetidos: `400 invalid_format` con el campo repetido.
-    - Formatos: `?format=json|csv|xml` o `Accept` (CSV/XML desde Growth; 402 en Free y Basic).
-    - Cuota y velocidad compartidas con v1 (mismo contador por cuenta).
+    - Prices: JSON numbers. A side with no data is `null`, never 0.
+    - Errors: `{code, message, field?, details?}`, always JSON (even when CSV or
+      XML was requested).
+    - Unknown parameters: `400 unknown_parameter`.
+    - Repeated query parameters: `400 invalid_format` with the repeated field.
+    - Formats: `?format=json|csv|xml` or `Accept` (CSV/XML from Growth; 402 on Free and Basic).
+    - Quota and rate limits are shared across API versions (one counter per account).
 servers:
   - url: https://api.cotizave.com
 security:
@@ -31,18 +29,18 @@ paths:
   /v2/fx/rates:
     get:
       tags: [fx]
-      summary: La oficial de cada país publicado en una sola llamada.
+      summary: The official rate of every published country in a single call.
       description: |
-        `?symbols=BRL,EUR` filtra monedas (todos los planes). `?base=EUR` cambia
-        la base (solo planes de pago; 402 en Free). `?format=map` devuelve el mapa
-        compacto `{quote: mid}`; cualquier otro valor la lista rica (default).
+        `?symbols=BRL,EUR` filters currencies (all plans). `?base=EUR` changes
+        the base (paid plans only; 402 on Free). `?format=map` returns the compact
+        map `{quote: mid}`; any other value returns the rich list (default).
       parameters:
-        - {name: symbols, in: query, schema: {type: string}, description: 'Monedas ISO 4217 separadas por coma.'}
-        - {name: base, in: query, schema: {type: string, pattern: '^[A-Za-z]{3}$'}, description: 'Moneda base (solo planes de pago). Default USD.'}
-        - {name: format, in: query, schema: {type: string, enum: [list, map]}, description: 'Forma de la respuesta. Default list.'}
+        - {name: symbols, in: query, schema: {type: string}, description: 'Comma-separated ISO 4217 currencies.'}
+        - {name: base, in: query, schema: {type: string, pattern: '^[A-Za-z]{3}$'}, description: 'Base currency (paid plans only). Defaults to USD.'}
+        - {name: format, in: query, schema: {type: string, enum: [list, map]}, description: 'Response shape. Defaults to list.'}
       responses:
         '200':
-          description: Lista rica o mapa compacto, según format
+          description: Rich list or compact map, depending on format
           content:
             application/json:
               schema:
@@ -55,16 +53,16 @@ paths:
   /v2/fx/historical-limits:
     get:
       tags: [fx]
-      summary: Cobertura del histórico (desde/hasta) de cada tasa que el plan ve.
+      summary: History coverage (first/last date) of every rate the plan can see.
       description: |
-        Con API key cuenta cuota y trae la cobertura de cada tasa visible por el
-        plan (no solo la oficial). Una cuenta sin tasas con histórico recibe 200
-        con `limits` vacío. La variante pública solo oficiales vive en
+        With an API key it counts against quota and returns the coverage of every
+        rate visible to the plan (not only the official one). An account with no
+        rates that have history receives 200 with an empty `limits`. The public, officials-only variant lives at
         `/v2/public/historical-limits`.
       parameters: [{$ref: '#/components/parameters/format'}]
       responses:
         '200':
-          description: Cobertura
+          description: Coverage
           content:
             application/json:
               schema: {$ref: '#/components/schemas/HistoricalLimitsResponse'}
@@ -72,14 +70,14 @@ paths:
   /v2/issuers:
     get:
       tags: [issuers]
-      summary: Directorio de instituciones que emiten las tasas oficiales. Todos los planes.
+      summary: Directory of the institutions that issue official rates. All plans.
       description: |
-        Datos fijos de referencia (procedencia): quién emite cada oficial de los
-        países publicados, con qué tasas publica. Sin precios ni histórico.
+        Fixed reference data (provenance): who issues each official rate of the
+        published countries and which rates they publish. No prices or history.
       parameters: [{$ref: '#/components/parameters/format'}]
       responses:
         '200':
-          description: Directorio
+          description: Directory
           content:
             application/json:
               schema: {$ref: '#/components/schemas/IssuersResponse'}
@@ -87,12 +85,12 @@ paths:
   /v2/public/issuers:
     get:
       tags: [issuers]
-      summary: Directorio reducido de emisores, sin API key (cacheado en el edge).
-      description: 'Sin key, sin cuota, solo JSON, cero parámetros. Subconjunto de /v2/issuers (id, nombres, tipo, países y nombre de cada tasa).'
+      summary: Reduced issuers directory, no API key required (edge-cached).
+      description: 'No key, no quota, JSON only, no parameters. A subset of /v2/issuers (id, names, kind, countries and the name of each rate).'
       security: []
       responses:
         '200':
-          description: Directorio reducido
+          description: Reduced directory
           content:
             application/json:
               schema: {$ref: '#/components/schemas/IssuersResponse'}
@@ -100,12 +98,12 @@ paths:
   /v2/public/historical-limits:
     get:
       tags: [fx]
-      summary: Cobertura del histórico de las oficiales, sin API key (cacheado en el edge).
-      description: 'Sin key, sin cuota, solo JSON, cero parámetros. Solo la oficial de cada país.'
+      summary: History coverage of the official rates, no API key required (edge-cached).
+      description: 'No key, no quota, JSON only, no parameters. Only the official rate of each country.'
       security: []
       responses:
         '200':
-          description: Cobertura (solo oficiales)
+          description: Coverage (official rates only)
           content:
             application/json:
               schema: {$ref: '#/components/schemas/HistoricalLimitsResponse'}
@@ -113,34 +111,38 @@ paths:
   /v2/fx/{cc}/rates:
     get:
       tags: [fx]
-      summary: Todas las tasas del país
+      summary: All rates of a country
       description: |
-        En Venezuela, las tasas restringidas por plan aparecen como descriptor
-        sin precio. Free recibe los campos de V1 más `id`; Basic agrega
-        `name`, `quote`, `stale`, `staleness_sec` y `available`; Growth y Pro
-        agregan `description`, `tags`, `change_24h_pct`, `vs_official_pct` y
-        `required_plan`. `stale_after_sec` conserva la omisión condicional de V1.
-        En AR, CO, PE, MX,
-        AU y ES todas las tasas publicadas incluyen precio en cualquier plan.
-        SET-FX está deshabilitado en Colombia. En VE, `?markup=tag` conserva
-        la variante V1 para planes con la capacidad de márgenes.
+        In Venezuela, plan-restricted rates appear as a descriptor
+        without a price. Free receives the v1 fields plus `id`; Basic adds
+        `name`, `quote`, `stale`, `staleness_sec` and `available`; Growth and Pro
+        add `description`, `tags`, `change_24h_pct`, `vs_official_pct` and
+        `required_plan`. `stale_after_sec` keeps v1's conditional omission.
+        In AR, CO, PE, MX,
+        AU and ES every published rate includes a price on any plan.
+        SET-FX is disabled in Colombia. In VE, `?markup=tag` keeps
+        the v1 variant for plans with the markups capability.
       parameters:
         - $ref: '#/components/parameters/cc'
-        - {name: tag, in: query, schema: {type: string}, description: 'Id, id de v1 o alias (bcv, reference, euro…)'}
-        - {name: category, in: query, schema: {$ref: '#/components/schemas/Category'}, description: 'Filtro histórico de v2; conserva los valores de categoría interna.'}
+        - {name: tag, in: query, schema: {type: string}, description: 'Id, v1 id, or alias (bcv, reference, euro…)'}
+        - {name: category, in: query, schema: {$ref: '#/components/schemas/Category'}, description: 'Legacy v2 filter; keeps the internal category values.'}
         - {name: base, in: query, schema: {type: string, pattern: '^[A-Za-z]{3}$'}}
         - {name: quote, in: query, schema: {type: string, pattern: '^[A-Za-z]{3}$'}}
-        - {name: markup, in: query, schema: {type: string}, description: 'Regla de margen del usuario, solo VE y planes autorizados.'}
+        - {name: markup, in: query, schema: {type: string}, description: 'User markup rule; VE and authorized plans only.'}
+        - {name: date, in: query, schema: {type: string, format: date}, description: 'Returns the full board as it closed on that day (RatesSnapshotResponse) instead of the live rates. Subject to the history retention of the plan.'}
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Colección
+          description: Collection
           headers:
             ETag: {schema: {type: string}}
             Cache-Control: {schema: {type: string, example: 'private, max-age=30'}}
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/RatesResponse'}
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RatesResponse'
+                  - $ref: '#/components/schemas/RatesSnapshotResponse'
               examples:
                 free:
                   value:
@@ -164,32 +166,32 @@ paths:
   /v2/fx/{cc}/rates/{id}:
     get:
       tags: [fx]
-      summary: Una tasa por id canónico
+      summary: A single rate by canonical id
       parameters:
         - $ref: '#/components/parameters/cc'
         - $ref: '#/components/parameters/id'
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Tasa con campos según plan; Free conserva el contrato V1 más id.
+          description: Rate with plan-dependent fields; Free keeps the v1 contract plus id.
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Rate'}
         '304': {description: Not Modified}
         '400': {$ref: '#/components/responses/Error'}
         '402': {description: 'feature_not_in_plan (details: feature, id, required_plan)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '404': {description: 'resource_not_found en VE sin dato, o rate_not_found / country_not_supported', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: 'resource_not_found in VE when there is no data, or rate_not_found / country_not_supported', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '429': {$ref: '#/components/responses/RateLimited'}
-        '503': {description: 'Tasa registrada sin dato en este momento', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '503': {description: 'Registered rate with no data right now', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /v2/fx/{cc}/rates/{id}/history:
     get:
       tags: [fx]
-      summary: Histórico de una tasa
+      summary: History of a rate
       description: |
-        `?date=` → un punto (la tasa que regía ese día). Sin `date`:
-        `granularity=daily` (default, sin paginación) o `raw` (paginada con
-        `cursor`/`limit`; las páginas avanzan hacia atrás en el tiempo y cada
-        una viene en orden ascendente). Retención según el plan.
+        `?date=` → a single point (the rate in effect that day). Without `date`:
+        `granularity=daily` (default, no pagination) or `raw` (paginated with
+        `cursor`/`limit`; pages move backwards in time and each
+        page is in ascending order). Retention depends on the plan.
       parameters:
         - $ref: '#/components/parameters/cc'
         - $ref: '#/components/parameters/id'
@@ -197,33 +199,36 @@ paths:
         - {name: from, in: query, schema: {type: string, format: date}}
         - {name: to, in: query, schema: {type: string, format: date}}
         - {name: granularity, in: query, schema: {type: string, enum: [daily, raw], default: daily}}
-        - {name: cursor, in: query, schema: {type: string}, description: 'Solo raw. Opaco.'}
-        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 5000, default: 1000}, description: 'Solo raw.'}
+        - {name: cursor, in: query, schema: {type: string}, description: 'Raw only. Opaque.'}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 5000, default: 1000}, description: 'Raw only.'}
+        - {name: stats, in: query, schema: {type: string, enum: ['1', 'true']}, description: 'Returns the aggregates of the period (HistoryStatsResponse) instead of the points.'}
+        - {name: ma, in: query, schema: {type: integer, minimum: 2, maximum: 365}, description: 'With stats: window of the moving average; adds sma/ema to the aggregates.'}
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Punto o colección
+          description: Point or collection
           content:
             application/json:
               schema:
                 oneOf:
                   - $ref: '#/components/schemas/HistoryPointResponse'
                   - $ref: '#/components/schemas/HistoryCollection'
+                  - $ref: '#/components/schemas/HistoryStatsResponse'
         '400': {$ref: '#/components/responses/Error'}
         '402': {$ref: '#/components/responses/Error'}
         '403': {description: history_out_of_retention, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '404': {description: 'rate_not_found | history_not_available | sin registro', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: 'rate_not_found | history_not_available | no record', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '503': {$ref: '#/components/responses/Error'}
   /v2/fx/{cc}/markets:
     get:
       tags: [fx]
-      summary: Catálogo de tasas del país (sin precios). Desde Growth.
+      summary: Rate catalog of a country (no prices). Growth and above.
       parameters:
         - $ref: '#/components/parameters/cc'
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Catálogo
+          description: Catalog
           content:
             application/json:
               schema:
@@ -239,7 +244,7 @@ paths:
   /v2/fx/{cc}/spread:
     get:
       tags: [fx]
-      summary: Diferencial de la oficial contra otra tasa del país. Desde Growth.
+      summary: Spread of the official rate against another rate of the country. Growth and above.
       parameters:
         - $ref: '#/components/parameters/cc'
         - {name: against, in: query, schema: {type: string, default: ve-paralelo}}
@@ -258,7 +263,7 @@ paths:
   /v2/fx/{cc}/route:
     get:
       tags: [fx]
-      summary: Mejor tasa ejecutable del país. Desde Pro.
+      summary: Best executable rate of a country. Pro and above.
       parameters:
         - $ref: '#/components/parameters/cc'
         - {name: from, in: query, required: true, schema: {type: string}}
@@ -269,7 +274,7 @@ paths:
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Ruta
+          description: Route
           content:
             application/json:
               schema: {$ref: '#/components/schemas/RouteResponse'}
@@ -279,20 +284,20 @@ paths:
   /v2/fx/{cc}/bank-rates:
     get:
       tags: [fx]
-      summary: Cotizaciones del BCV por banco (todos los planes)
+      summary: BCV quotations per bank (all plans)
       description: |
-        Lo que el BCV publica en "tasas informativas del sistema bancario".
-        Cada fila la identifica el banco (código SUDEBAN o null), no un id de
-        tasa. En VE, sin filtro `bank`, `bank_rates` y `captured_at` conservan la respuesta V1:
-        allí `stale` significa publicación anterior. En `banks`, `stale`
-        significa que la cotización superó su umbral de antigüedad.
+        What the BCV publishes as "informative rates of the banking system".
+        Each row is identified by the bank (SUDEBAN code or null), not by a rate
+        id. In VE, without the `bank` filter, `bank_rates` and `captured_at` keep the v1 response:
+        there `stale` means an earlier publication. In `banks`, `stale`
+        means the quotation exceeded its staleness threshold.
       parameters:
         - $ref: '#/components/parameters/cc'
-        - {name: bank, in: query, schema: {type: string, pattern: '^[0-9]{4}$'}, description: Filtra por código SUDEBAN}
+        - {name: bank, in: query, schema: {type: string, pattern: '^[0-9]{4}$'}, description: Filter by SUDEBAN code}
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Tasas por banco
+          description: Rates per bank
           content:
             application/json:
               schema:
@@ -303,44 +308,44 @@ paths:
                     properties:
                       indicator_date: {type: string, format: date}
                       fetched_at: {type: string, format: date-time}
-                      captured_at: {type: string, format: date-time, description: 'Alias V1; solo VE.'}
+                      captured_at: {type: string, format: date-time, description: 'v1 alias; VE only.'}
                       plan: {type: string}
                       banks: {type: array, items: {$ref: '#/components/schemas/BankRate'}}
-                      bank_rates: {type: array, description: 'Filas V1 con bank, buy, sell, date, stale y days_behind; solo VE y sin filtro bank.', items: {type: object}}
-        '400': {description: '`bank` no válido, o filtro por banco no disponible en el país (AU)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '404': {description: 'bcv_snapshot_unavailable en VE; bank_rates_not_available si el país no publica tasas por banco', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '503': {description: 'bank_rates_unavailable para fuentes bancarias fuera de VE', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+                      bank_rates: {type: array, description: 'v1 rows with bank, buy, sell, date, stale and days_behind; VE only and without the bank filter.', items: {type: object}}
+        '400': {description: 'Invalid `bank`, or bank filter not available for the country (AU)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: 'bcv_snapshot_unavailable in VE; bank_rates_not_available if the country does not publish per-bank rates', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '503': {description: 'bank_rates_unavailable for bank sources outside VE', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /v2/fx/convert:
     get:
       tags: [fx]
-      summary: Una conversión
+      summary: A single conversion
       description: |
-        VE: USD/EUR ↔ VES, default `via` = la oficial de esa moneda (ve-bcv / ve-euro).
-        CO: USD ↔ COP, default `via` = co-trm; `date` solo con co-trm (TRM que regía ese día).
-        AU: USD ↔ AUD, default `via` = au-official; sin `date`.
-        JP: USD ↔ JPY, default `via` = jp-official; `date` con jp-official.
+        VE: USD/EUR ↔ VES, default `via` = the official rate for that currency (ve-bcv / ve-euro).
+        CO: USD ↔ COP, default `via` = co-trm; `date` only with co-trm (the TRM in effect that day).
+        AU: USD ↔ AUD, default `via` = au-official; no `date`.
+        JP: USD ↔ JPY, default `via` = jp-official; `date` with jp-official.
         LATAM (pe, py, bo, ar, br, cl, uy, mx, cr, gt, hn, do): USD ↔ local,
-        default `via` = {cc}-official; `date` en pe, ar, br, cl y hn.
-        SE/PL/CH: USD ↔ local y EUR ↔ local; default `via` = la oficial en
-        esa moneda ({cc}-official / {cc}-official-eur); `date` con la oficial en USD.
-        Con `via` explícito, una tasa EUR registrada puede convertir EUR ↔ moneda
-        local aunque ese país no tenga una referencia EUR predeterminada (por ejemplo,
-        remesas desde España en AR/CO/MX). Las remesas solo admiten EUR → local.
-        `via` debe coincidir con el par; no se sustituyen tasas ni se cruzan pares.
-        Las tasas extras del BCV CNY/TRY/RUB se publican en `/rates`, pero no son
-        convertibles y un `via` que las seleccione devuelve 400 con campo `via`.
-        `date` desde Growth y solo donde exista histórico de conversión apto.
+        default `via` = {cc}-official; `date` in pe, ar, br, cl and hn.
+        SE/PL/CH: USD ↔ local and EUR ↔ local; default `via` = the official rate in
+        that currency ({cc}-official / {cc}-official-eur); `date` with the USD official rate.
+        With an explicit `via`, a registered EUR rate can convert EUR ↔ local
+        currency even if that country has no default EUR reference (for example,
+        remittances from Spain in AR/CO/MX). Remittances only support EUR → local.
+        `via` must match the pair; rates are never substituted and pairs are never crossed.
+        The extra BCV rates CNY/TRY/RUB are published in `/rates`, but they are not
+        convertible, and a `via` selecting them returns 400 with field `via`.
+        `date` from Growth and only where suitable conversion history exists.
       parameters:
         - {name: from, in: query, required: true, schema: {type: string}}
         - {name: to, in: query, required: true, schema: {type: string}}
         - {name: amount, in: query, required: true, schema: {type: number, exclusiveMinimum: 0, maximum: 1000000000000}}
-        - {name: via, in: query, schema: {type: string}, description: 'Id de v2 (ve-binance…). Solo tasas del snapshot.'}
-        - {name: market, in: query, schema: {type: string}, description: 'Alias V1 local de via, para VE.'}
+        - {name: via, in: query, schema: {type: string}, description: 'v2 id (ve-binance…). Snapshot rates only.'}
+        - {name: market, in: query, schema: {type: string}, description: 'Local v1 alias of via, for VE.'}
         - {name: date, in: query, schema: {type: string, format: date}}
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Conversión
+          description: Conversion
           content:
             application/json:
               schema: {$ref: '#/components/schemas/ConvertResponse'}
@@ -351,8 +356,8 @@ paths:
         '503': {$ref: '#/components/responses/Error'}
     post:
       tags: [fx]
-      summary: Hasta 50 conversiones. Desde Pro. Cuenta 1 consulta.
-      description: 'Acepta exactamente un objeto JSON: el body V2 con conversions o el body V1 con from, to, amounts y market. Un segundo documento JSON devuelve 400 invalid_format. La segunda variante responde con rate, market, type, updated_at, results, total_in, total_out e id.'
+      summary: Up to 50 conversions. Pro and above. Counts as 1 request.
+      description: 'Accepts exactly one JSON object: the v2 body with conversions, or the v1 body with from, to, amounts and market. A second JSON document returns 400 invalid_format. The second variant responds with rate, market, type, updated_at, results, total_in, total_out and id.'
       parameters:
         - $ref: '#/components/parameters/format'
       requestBody:
@@ -388,7 +393,7 @@ paths:
                     market: {type: string}
       responses:
         '200':
-          description: Un resultado por ítem, en el mismo orden (conversión o error)
+          description: One result per item, in the same order (conversion or error)
           content:
             application/json:
               schema:
@@ -411,19 +416,19 @@ paths:
   /v2/crypto:
     get:
       tags: [crypto]
-      summary: Estables USDT, USDC y EURC en dólares. Desde Growth.
+      summary: USDT, USDC and EURC stablecoins priced in US dollars. Growth and above.
       description: |
-        Precio en dólares de las monedas estables publicadas por Cotizave,
-        con la misma forma de fila que `/v2/fx/{cc}/rates` (`type: crypto`,
-        `quote: USD`, `mid` = punto medio entre compra y venta). Se renueva cada
-        5 minutos. Los planes sin la función reciben el descriptor sin precio
+        US-dollar price of the stablecoins published by Cotizave,
+        with the same row shape as `/v2/fx/{cc}/rates` (`type: crypto`,
+        `quote: USD`, `mid` = midpoint between bid and ask). Refreshed every
+        5 minutes. Plans without the feature receive the descriptor without a price
         (`available: false`, `required_plan`).
       parameters:
-        - {name: tag, in: query, schema: {type: string}, description: 'Id o etiqueta (usdt, stablecoin…)'}
+        - {name: tag, in: query, schema: {type: string}, description: 'Id or tag (usdt, stablecoin…)'}
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Colección
+          description: Collection
           content:
             application/json:
               schema:
@@ -449,23 +454,23 @@ paths:
   /v2/crypto/{id}:
     get:
       tags: [crypto]
-      summary: Una moneda estable (usdt-usd, usdc-usd, eurc-usd). Desde Growth.
+      summary: A single stablecoin (usdt-usd, usdc-usd, eurc-usd). Growth and above.
       parameters:
         - {name: id, in: path, required: true, schema: {type: string, enum: [usdt-usd, usdc-usd, eurc-usd]}}
         - $ref: '#/components/parameters/format'
       responses:
-        '200': {description: Tasa (incluye `fetched_at`), content: {application/json: {schema: {$ref: '#/components/schemas/Rate'}}}}
+        '200': {description: Rate (includes `fetched_at`), content: {application/json: {schema: {$ref: '#/components/schemas/Rate'}}}}
         '402': {description: 'feature_not_in_plan (details: feature, id, required_plan)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: rate_not_found, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '503': {description: Sin dato en este momento, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '503': {description: No data right now, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /v2/countries:
     get:
       tags: [countries]
-      summary: Países publicados. Desde Pro.
+      summary: Published countries. Pro and above.
       parameters: [{$ref: '#/components/parameters/format'}]
       responses:
         '200':
-          description: Lista
+          description: List
           content:
             application/json:
               schema:
@@ -477,22 +482,22 @@ paths:
   /v2/countries/{cc}:
     get:
       tags: [countries]
-      summary: Un país publicado. Desde Pro.
+      summary: A single published country. Pro and above.
       parameters:
         - {name: cc, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z]{2}$'}}
         - $ref: '#/components/parameters/format'
       responses:
-        '200': {description: País, content: {application/json: {schema: {$ref: '#/components/schemas/Country'}}}}
+        '200': {description: Country, content: {application/json: {schema: {$ref: '#/components/schemas/Country'}}}}
         '402': {$ref: '#/components/responses/Error'}
         '404': {description: country_not_supported, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /v2/currencies:
     get:
       tags: [currencies]
-      summary: Monedas que Cotizave cotiza (ISO 4217). Desde Pro.
+      summary: Currencies quoted by Cotizave (ISO 4217). Pro and above.
       parameters: [{$ref: '#/components/parameters/format'}]
       responses:
         '200':
-          description: Lista
+          description: List
           content:
             application/json:
               schema:
@@ -504,26 +509,26 @@ paths:
   /v2/currencies/{code}:
     get:
       tags: [currencies]
-      summary: Una moneda. Desde Pro.
+      summary: A single currency. Pro and above.
       parameters:
         - {name: code, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z]{3}$'}}
         - $ref: '#/components/parameters/format'
       responses:
-        '200': {description: Moneda, content: {application/json: {schema: {$ref: '#/components/schemas/Currency'}}}}
+        '200': {description: Currency, content: {application/json: {schema: {$ref: '#/components/schemas/Currency'}}}}
         '400': {$ref: '#/components/responses/Error'}
         '402': {$ref: '#/components/responses/Error'}
         '404': {description: currency_not_found, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /v2/banks/{cc}:
     get:
       tags: [banks]
-      summary: Bancos del país (identidad, sin precio)
+      summary: Banks of a country (identity, no price)
       parameters:
         - $ref: '#/components/parameters/cc'
         - {name: q, in: query, schema: {type: string}}
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Lista
+          description: List
           content:
             application/json:
               schema:
@@ -537,14 +542,14 @@ paths:
   /v2/banks/{cc}/{code}:
     get:
       tags: [banks]
-      summary: Un banco por su código oficial (SUDEBAN en VE)
+      summary: A single bank by its official code (SUDEBAN in VE)
       parameters:
         - $ref: '#/components/parameters/cc'
         - {name: code, in: path, required: true, schema: {type: string, pattern: '^[0-9]{4}$'}}
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Banco
+          description: Bank
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Bank'}
@@ -554,8 +559,8 @@ paths:
   /v2/holidays/{cc}:
     get:
       tags: [holidays]
-      summary: Feriados (año), ¿es feriado? (date) o el próximo (from). Desde Basic en V2.
-      description: '`year`, `date` y `from` son excluyentes (400 si vienen dos).'
+      summary: Holidays (year), is-it-a-holiday (date), or the next one (from). Basic and above.
+      description: '`year`, `date` and `from` are mutually exclusive (400 if two are sent).'
       parameters:
         - $ref: '#/components/parameters/cc'
         - {name: year, in: query, schema: {type: integer, minimum: 1583, maximum: 9999}}
@@ -564,7 +569,7 @@ paths:
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Según el modo
+          description: Depends on the mode
           content:
             application/json:
               schema:
@@ -592,12 +597,12 @@ paths:
         '400': {$ref: '#/components/responses/Error'}
         '402': {$ref: '#/components/responses/Error'}
         '403': {$ref: '#/components/responses/Error'}
-        '404': {description: 'holidays_not_available (año fuera de la tabla, details first_year/last_year)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: 'holidays_not_available (year outside the table; details first_year/last_year)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '503': {$ref: '#/components/responses/Error'}
   /v2/holidays/{cc}/business-days:
     get:
       tags: [holidays]
-      summary: Fecha resultante de sumar N días hábiles. Desde Basic en V2.
+      summary: Date reached by adding N business days. Basic and above.
       parameters:
         - $ref: '#/components/parameters/cc'
         - {name: from, in: query, schema: {type: string, format: date}}
@@ -605,7 +610,7 @@ paths:
         - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: Resultado
+          description: Result
           content:
             application/json:
               schema:
@@ -624,8 +629,8 @@ components:
   securitySchemes:
     ApiKey: {type: apiKey, in: header, name: X-API-Key}
   parameters:
-    cc: {name: cc, in: path, required: true, schema: {type: string, enum: [ve, co, au, jp, se, pl, ch, pe, py, bo, ar, br, cl, uy, mx, cr, gt, hn, do, in, id, ph, th, za, cn, il, hk, ke, gh, ng, tr, ro, hu, it, nl, be, at, ie, fi, gr, hr, si, sk, ee, lv, lt, lu, mt, cy, bg, es, fr, de, pt, is, ua, ge, mk, md, am, uz, az, kz, kg]}, description: 'ISO 3166 alfa-2, minúscula (case-insensitive). Todos van con API_V2_ENABLED.'}
-    id: {name: id, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z]{2}-[A-Za-z0-9-]+$'}, description: 'Id canónico (ve-bcv). Case-insensitive.'}
+    cc: {name: cc, in: path, required: true, schema: {type: string, enum: [ve, co, au, jp, se, pl, ch, pe, py, bo, ar, br, cl, uy, mx, cr, gt, hn, do, in, id, ph, th, za, cn, il, hk, ke, gh, ng, tr, ro, hu, it, nl, be, at, ie, fi, gr, hr, si, sk, ee, lv, lt, lu, mt, cy, bg, es, fr, de, pt, is, ua, ge, mk, md, am, uz, az, kz, kg]}, description: 'ISO 3166 alpha-2, lowercase (case-insensitive).'}
+    id: {name: id, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z]{2}-[A-Za-z0-9-]+$'}, description: 'Canonical id (ve-bcv). Case-insensitive.'}
     format: {name: format, in: query, schema: {type: string, enum: [json, csv, xml]}}
   responses:
     Error:
@@ -634,11 +639,11 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
     RateLimited:
-      description: Límite de velocidad o cuota (mismas cabeceras que v1)
+      description: Rate limit or quota exceeded
       headers:
         Retry-After: {schema: {type: integer}}
         X-RateLimit-Scope: {schema: {type: string, enum: [burst, monthly]}}
-        X-RateLimit-Limit-Minute: {schema: {type: integer}, description: Consultas por minuto del plan}
+        X-RateLimit-Limit-Minute: {schema: {type: integer}, description: Requests per minute allowed by the plan}
         X-RateLimit-Remaining-Minute: {schema: {type: integer}}
         X-RateLimit-Retry-After-Ms: {schema: {type: integer}}
       content:
@@ -655,56 +660,56 @@ components:
         details: {type: object}
     Category:
       type: string
-      description: 'Valores del parámetro de filtro category; su nombre y valores se mantienen.'
+      description: 'Values of the category filter parameter; its name and values are kept as-is.'
       enum: [official, interbank, parallel, securities, crypto_p2p, crypto_exchange, bank_board, cash, remittance, card, exchange_house, crypto]
     RateType:
       type: string
-      description: 'Valores compatibles con v1 para VE; las clases exclusivas de v2 conservan su significado propio.'
+      description: 'Values compatible with v1 for VE; v2-only classes keep their own meaning.'
       enum: [reference, interbank, parallel, securities, p2p, crypto_exchange, bank_board, cash, remittance, card, exchange_house, crypto]
     Rate:
       type: object
-      description: 'Campos presentes según plan. En VE los campos V1 conservan exactamente sus reglas de omisión; Free añade solo id.'
+      description: 'Fields present depend on the plan. In VE the v1 fields keep exactly their omission rules; Free only adds id.'
       required: [id, market, type, mid, updated_at]
       properties:
         id: {type: string}
-        market: {type: string, description: 'Identificador local estable; en VE es exactamente el market de v1. Para monedas BCV adicionales es el código ISO 4217.'}
+        market: {type: string, description: 'Stable local identifier; in VE it is exactly the v1 market. For additional BCV currencies it is the ISO 4217 code.'}
         name: {type: string, description: 'Basic+'}
-        description: {type: string, description: 'Qué es la tasa, quién la publica, cada cuánto cambia y para qué se usa. Según Accept-Language (es/en; sin encabezado, en). Ausente si no hay texto.'}
+        description: {type: string, description: 'What the rate is, who publishes it, how often it changes and what it is used for. Follows Accept-Language (es/en; en when the header is absent). Absent if there is no text.'}
         type: {$ref: '#/components/schemas/RateType'}
-        base: {type: string, description: 'En VE se omite si V1 lo omitía.'}
+        base: {type: string, description: 'In VE it is omitted if v1 omitted it.'}
         quote: {type: string, description: 'Basic+'}
         mid: {type: number}
-        bid: {type: [number, 'null'], description: 'VE conserva la omisión V1 si no existe precio de compra.'}
-        ask: {type: [number, 'null'], description: 'VE conserva la omisión V1 si no existe precio de venta.'}
-        updated_at: {type: string, format: date-time, description: Momento del dato en la fuente}
-        effective_date: {type: string, format: date, description: Fecha valor (solo oficiales)}
-        fetched_at: {type: string, format: date-time, description: Solo en el recurso individual}
-        stale: {type: boolean, description: 'Basic+ en /rates; Free lo conserva en /convert.'}
-        stale_after_sec: {type: integer, description: 'En VE aparece cuando V1 tenía un umbral explícito.'}
-        staleness_sec: {type: integer, description: 'Basic+ en /rates; Free lo conserva en /convert y /route.'}
-        change_24h_pct: {type: [number, 'null'], description: 'Growth+. Contra la última captura de hace ≥24 h'}
-        vs_official_pct: {type: [number, 'null'], description: 'Growth+. Contra la oficial de la misma base; null en oficiales'}
+        bid: {type: [number, 'null'], description: 'VE keeps the v1 omission when there is no bid price.'}
+        ask: {type: [number, 'null'], description: 'VE keeps the v1 omission when there is no ask price.'}
+        updated_at: {type: string, format: date-time, description: Time of the data point at the source}
+        effective_date: {type: string, format: date, description: Value date (official rates only)}
+        fetched_at: {type: string, format: date-time, description: Only on the single-rate resource}
+        stale: {type: boolean, description: 'Basic+ in /rates; Free keeps it in /convert.'}
+        stale_after_sec: {type: integer, description: 'In VE it appears when v1 had an explicit threshold.'}
+        staleness_sec: {type: integer, description: 'Basic+ in /rates; Free keeps it in /convert and /route.'}
+        change_24h_pct: {type: [number, 'null'], description: 'Growth+. Against the latest capture from ≥24 h ago'}
+        vs_official_pct: {type: [number, 'null'], description: 'Growth+. Against the official rate of the same base; null for official rates'}
         tags: {type: array, items: {type: string}, description: 'Growth+'}
         available: {const: true, description: 'Basic+'}
-        required_plan: {type: string, enum: [free, hobby, indie, pro, pro_extra], description: 'Growth+. Id del plan público mínimo que habilita la tasa; hobby = Basic, indie = Growth.'}
+        required_plan: {type: string, enum: [free, hobby, indie, pro, pro_extra], description: 'Growth+. Id of the minimum public plan that enables the rate; hobby = Basic, indie = Growth.'}
     RateDescriptor:
       type: object
-      description: 'Tasa VE restringida: Free ve solo id, Basic ve identidad y available=false, Growth+ ve el descriptor completo.'
+      description: 'Restricted VE rate: Free sees only id, Basic sees identity and available=false, Growth+ sees the full descriptor.'
       required: [id]
       properties:
         id: {type: string}
-        market: {type: string, description: Identificador local estable}
+        market: {type: string, description: Stable local identifier}
         name: {type: string}
-        description: {type: string, description: 'Qué es la tasa, quién la publica, cada cuánto cambia y para qué se usa. Según Accept-Language (es/en; sin encabezado, en). Ausente si no hay texto.'}
+        description: {type: string, description: 'What the rate is, who publishes it, how often it changes and what it is used for. Follows Accept-Language (es/en; en when the header is absent). Absent if there is no text.'}
         type: {$ref: '#/components/schemas/RateType'}
         base: {type: string}
         quote: {type: string}
         tags: {type: array, items: {type: string}}
         available: {const: false}
-        required_plan: {type: string, enum: [free, hobby, indie, pro, pro_extra], description: 'Id del plan público mínimo que habilita la tasa; hobby = Basic, indie = Growth.'}
+        required_plan: {type: string, enum: [free, hobby, indie, pro, pro_extra], description: 'Id of the minimum public plan that enables the rate; hobby = Basic, indie = Growth.'}
     GeoFields:
       type: object
-      description: 'Datos del país en el primer nivel. country y currency en todos los planes; la geografía solo en Pro+.'
+      description: 'Country data at the top level. country and currency on all plans; geography only on Pro+.'
       required: [country, currency]
       properties:
         country: {type: string}
@@ -724,7 +729,7 @@ components:
             base: {type: string}
             fetched_at: {type: string, format: date-time}
             plan: {type: string}
-            index: {type: object, description: 'Cotizave Index (mismo objeto que /v1/fx/rates). Solo VE.'}
+            index: {type: object, description: 'Cotizave Index object. VE only.'}
             rates:
               type: array
               items:
@@ -739,26 +744,26 @@ components:
           type: object
           required: [code, name]
           properties:
-            code: {type: [string, 'null'], description: 'SUDEBAN; null si no hay código confiable'}
-            name: {type: string, description: Nombre tal como lo publica el BCV}
+            code: {type: [string, 'null'], description: 'SUDEBAN; null when there is no reliable code'}
+            name: {type: string, description: Name as published by the BCV}
         base: {type: string}
         quote: {type: string}
         mid: {type: number}
         bid: {type: [number, 'null']}
         ask: {type: [number, 'null']}
         updated_at: {type: string, format: date-time}
-        effective_date: {type: string, format: date, description: 'Fecha valor (VE); ausente si el banco no la publica (AU)'}
+        effective_date: {type: string, format: date, description: 'Value date (VE); absent if the bank does not publish it (AU)'}
         stale: {type: boolean}
         stale_after_sec: {type: integer}
         staleness_sec: {type: integer}
-        days_behind: {type: integer, description: Días detrás de la última publicación}
+        days_behind: {type: integer, description: Days behind the latest publication}
         vs_official_pct: {type: [number, 'null'], description: Growth+}
     Country:
       type: object
       required: [code, name, flag, continent, region, region_code, currency, timezone, rates]
       properties:
         code: {type: string}
-        name: {type: string, description: Según Accept-Language (es/en)}
+        name: {type: string, description: Follows Accept-Language (es/en)}
         flag: {type: string}
         continent: {type: string}
         region: {type: string}
@@ -772,7 +777,7 @@ components:
       properties:
         code: {type: string}
         numeric_code: {type: string}
-        name: {type: string, description: Según Accept-Language (es/en)}
+        name: {type: string, description: Follows Accept-Language (es/en)}
         minor_unit: {type: integer}
         symbol: {type: string}
     MarketEntry:
@@ -781,7 +786,7 @@ components:
       properties:
         id: {type: string}
         market: {type: string}
-        aliases: {type: array, items: {type: string}, description: 'Aliases V1 para mercados VE.'}
+        aliases: {type: array, items: {type: string}, description: 'v1 aliases for VE markets.'}
         name: {type: string}
         type: {$ref: '#/components/schemas/RateType'}
         base: {type: string}
@@ -789,10 +794,10 @@ components:
         tags: {type: array, items: {type: string}}
         stale_after_sec: {type: integer}
         available: {type: boolean}
-        required_plan: {type: string, enum: [free, hobby, indie, pro, pro_extra], description: 'Id del plan público mínimo que habilita la tasa; hobby = Basic, indie = Growth.'}
+        required_plan: {type: string, enum: [free, hobby, indie, pro, pro_extra], description: 'Id of the minimum public plan that enables the rate; hobby = Basic, indie = Growth.'}
         conversion_directions:
           type: array
-          description: 'Pares que /convert admite para esta tasa, independientemente del plan y de si hay precio utilizable ahora. Vacío para tasas fuera del snapshot de conversión.'
+          description: 'Pairs that /convert supports for this rate, regardless of plan and of whether a usable price exists right now. Empty for rates outside the conversion snapshot.'
           items:
             type: object
             required: [from, to]
@@ -810,7 +815,7 @@ components:
         date: {type: string, format: date}
         mid: {type: number}
         updated_at: {type: string, format: date-time}
-        fetched_at: {type: string, format: date-time, description: 'En histórico diario propio, última escritura de esa versión; en VE, captura guardada; en el respaldo TRM, hora de armado de la respuesta.'}
+        fetched_at: {type: string, format: date-time, description: 'For own daily history, the last write of that version; in VE, the stored capture; for the TRM fallback, the time the response was built.'}
     HistoryCollection:
       type: object
       required: [id, market, base, quote, from, to, granularity, count, next_cursor, points]
@@ -833,7 +838,7 @@ components:
               date: {type: string, format: date}
               mid: {type: number}
               updated_at: {type: string, format: date-time}
-              fetched_at: {type: string, format: date-time, description: 'En histórico diario propio, última escritura de esa versión; en VE, captura guardada; en el respaldo TRM, hora de armado de la respuesta.'}
+              fetched_at: {type: string, format: date-time, description: 'For own daily history, the last write of that version; in VE, the stored capture; for the TRM fallback, the time the response was built.'}
     ConvertResponse:
       type: object
       required: [from, to, rate, via, market, type, updated_at, staleness_sec, stale]
@@ -842,7 +847,7 @@ components:
         to: {$ref: '#/components/schemas/Amount'}
         rate: {type: number}
         via: {type: string}
-        market: {type: string, description: 'Identificador local de la tasa usada; via conserva el id global de v2.'}
+        market: {type: string, description: 'Local identifier of the rate used; via keeps the global v2 id.'}
         type: {$ref: '#/components/schemas/RateType'}
         updated_at: {type: string, format: date-time}
         effective_date: {type: string, format: date}
@@ -915,8 +920,8 @@ components:
         country: {type: string}
         code: {type: string}
         name: {type: string}
-        type: {type: [string, 'null'], enum: [public, private, null], description: 'null si la fuente no lo informa (CO)'}
-        bank_rates: {type: [string, 'null'], description: 'Enlace a sus cotizaciones en /v2/fx/{cc}/bank-rates?bank=; null si no hay'}
+        type: {type: [string, 'null'], enum: [public, private, null], description: 'null if the source does not report it (CO)'}
+        bank_rates: {type: [string, 'null'], description: 'Link to its quotations at /v2/fx/{cc}/bank-rates?bank=; null if there are none'}
     Holiday:
       type: object
       required: [date, local_name, name, type, fixed, global]
@@ -956,7 +961,7 @@ components:
         rates:
           type: object
           additionalProperties: {type: number}
-          description: 'Mapa de moneda de cotización a mid (unidades por 1 base).'
+          description: 'Map of quote currency to mid (units per 1 base).'
     HistoricalLimitRow:
       type: object
       required: [id, country, quote, first, last, days]
@@ -964,7 +969,7 @@ components:
         id: {type: string}
         country: {type: string}
         quote: {type: string}
-        base: {type: string, description: 'Omitido = USD; EUR en oficiales en euro.'}
+        base: {type: string, description: 'Omitted = USD; EUR for euro-denominated official rates.'}
         first: {type: string, format: date}
         last: {type: string, format: date}
         days: {type: integer}
@@ -1046,3 +1051,63 @@ components:
         succeeded: {type: integer}
         failed: {type: integer}
         results: {type: array, items: {$ref: '#/components/schemas/BulkConvertItem'}}
+    RatesSnapshotRow:
+      type: object
+      description: 'Close of a rate on a past date. No change_24h or vs_official: those are relative to "now".'
+      required: [id, market, type, mid, updated_at]
+      properties:
+        id: {type: string}
+        market: {type: string}
+        type: {$ref: '#/components/schemas/RateType'}
+        mid: {type: number}
+        bid: {type: number, description: 'Absent when the source has no bid price.'}
+        ask: {type: number, description: 'Absent when the source has no ask price.'}
+        updated_at: {type: string, format: date-time}
+    RatesSnapshotResponse:
+      description: 'The full board of a country on a date: every rate the plan includes, as it was that day.'
+      allOf:
+        - $ref: '#/components/schemas/GeoFields'
+        - type: object
+          required: [date, base, count, rates]
+          properties:
+            date: {type: string, format: date}
+            base: {type: string}
+            count: {type: integer}
+            rates: {type: array, items: {$ref: '#/components/schemas/RatesSnapshotRow'}}
+    HistoryStatsPoint:
+      type: object
+      required: [date, mid]
+      properties:
+        date: {type: string, format: date}
+        mid: {type: number}
+    HistoryStats:
+      type: object
+      description: 'Aggregates of a period over the daily closes. count is the number of days with data.'
+      required: [count, min, max, avg, stddev, first, last, change, change_pct]
+      properties:
+        count: {type: integer}
+        min: {type: number}
+        max: {type: number}
+        avg: {type: number}
+        stddev: {type: number}
+        first: {$ref: '#/components/schemas/HistoryStatsPoint'}
+        last: {$ref: '#/components/schemas/HistoryStatsPoint'}
+        change: {type: number}
+        change_pct: {type: number}
+        period: {type: integer, description: 'Moving-average window (only with ma).'}
+        sma: {type: number, description: 'Simple moving average (only with ma).'}
+        ema: {type: number, description: 'Exponential moving average (only with ma).'}
+        vs_sma_pct: {type: number, description: 'Latest close against its SMA (only with ma).'}
+        vs_ema_pct: {type: number, description: 'Latest close against its EMA (only with ma).'}
+    HistoryStatsResponse:
+      type: object
+      required: [id, market, base, quote, from, to, granularity, stats]
+      properties:
+        id: {type: string}
+        market: {type: string}
+        base: {type: string}
+        quote: {type: string}
+        from: {type: string, format: date}
+        to: {type: string, format: date}
+        granularity: {type: string}
+        stats: {$ref: '#/components/schemas/HistoryStats'}

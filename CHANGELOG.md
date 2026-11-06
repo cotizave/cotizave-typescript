@@ -14,8 +14,9 @@ Initial release. Not yet published to npm.
 
 - `Cotizave` client for the Cotizave **API v2** (`X-API-Key` auth).
 - Typed resources derived from the OpenAPI v2 contract:
-  - `rates.list` / `rates.get` / `rates.global`
-  - `history.get` / `history.daily` / `history.raw` / `history.iterate` / `history.limits`
+  - `rates.list` / `rates.get` / `rates.global` / `rates.snapshot`
+  - `history.get` / `history.daily` / `history.raw` / `history.iterate` /
+    `history.stats` / `history.limits`
   - `convert` / `convertBulk` (max 50)
   - `markets` / `spread` / `route` / `bankRates`
   - `countries` / `currencies` / `banks` / `issuers` / `holidays` / `crypto`
@@ -28,10 +29,13 @@ Initial release. Not yet published to npm.
   conditional GETs (`ifNoneMatch` / `304`); CSV/XML export via `export`.
 - Dual ESM + CommonJS builds with per-format type declarations (validated with
   `publint` and `are-the-types-wrong`).
-- Client options with safe defaults: `timeout`, `maxRetries`, `maxRetryDelay`,
-  `maxResponseBytes`, `baseUrl`, `fetch`, `userAgent`, `allowInsecureHttp`.
+- Client options with safe defaults: low timeouts (`timeout` 5s, `historyTimeout`
+  10s), `maxRetries`, `maxRetryDelay`, a `retry` policy (`baseDelay`, `maxDelay`,
+  `statuses`, `retryRateLimited`, `shouldRetry`, `onRetry`), `headers`,
+  `language`, `onResponse`, `maxResponseBytes`, `baseUrl`, `fetch`, `userAgent`
+  and `allowInsecureHttp`.
 - Per-call overrides on every method through a trailing `RequestConfig`
-  (`signal`, `timeout`, `maxRetries`).
+  (`signal`, `timeout`, `maxRetries`, `headers`, `language`).
 
 ### Security
 

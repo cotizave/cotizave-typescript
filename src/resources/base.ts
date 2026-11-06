@@ -1,8 +1,16 @@
-import type { Transport } from '../transport';
+import type { RequestConfig, Transport } from '../transport';
 
 /** Shared base for resource groups: holds the transport and small helpers. */
 export abstract class Resource {
   constructor(protected readonly transport: Transport) {}
+}
+
+/**
+ * Per-call config for a history read: the caller's `timeout` wins, otherwise
+ * the (longer) client-wide `historyTimeout` applies instead of `timeout`.
+ */
+export function historyConfig(transport: Transport, config?: RequestConfig): RequestConfig {
+  return { ...config, timeout: config?.timeout ?? transport.historyTimeout };
 }
 
 /** Normalizes an ISO-3166 alpha-2 country code (the API is case-insensitive). */

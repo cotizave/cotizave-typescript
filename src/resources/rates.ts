@@ -1,9 +1,10 @@
-import { Resource, cc, seg } from './base';
+import { Resource, cc, historyConfig, seg } from './base';
 import type { RequestConfig } from '../transport';
 import type {
   RatesResponse,
   Rate,
   RateCategory,
+  RatesSnapshotResponse,
   GlobalRatesList,
   GlobalRatesMap,
 } from '../types/public';
@@ -67,6 +68,21 @@ export class RatesResource extends Resource {
       `/v2/fx/${cc(country)}/rates/${seg(rateId, 'rate id')}`,
       undefined,
       config,
+    );
+  }
+
+  /**
+   * The full board of a country as it closed on a past day: every rate the plan
+   * includes, in one call. Subject to the plan's history retention.
+   *
+   * @example
+   * const board = await client.rates.snapshot('AR', '2026-10-01');
+   */
+  snapshot(country: string, date: string, config?: RequestConfig): Promise<RatesSnapshotResponse> {
+    return this.transport.get<RatesSnapshotResponse>(
+      `/v2/fx/${cc(country)}/rates`,
+      { date: seg(date, 'date') },
+      historyConfig(this.transport, config),
     );
   }
 

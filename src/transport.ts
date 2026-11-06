@@ -1,4 +1,9 @@
-import type { ResolvedConfig } from './config';
+import {
+  validateHeaders,
+  validateHeaderValue,
+  type HttpMethod,
+  type ResolvedConfig,
+} from './config';
 import {
   CotizaveConnectionError,
   CotizaveError,
@@ -8,33 +13,11 @@ import {
 } from './errors';
 import type { ApiErrorBody } from './types/public';
 import { buildMeta } from './internal/headers';
-import { isRetryable, nextDelayMs, sleep } from './internal/retry';
+import { nextDelayMs, shouldRetry, sleep } from './internal/retry';
 
 /** A query value; `undefined`/`null` entries are omitted from the URL. */
 export type QueryValue = string | number | boolean | undefined | null;
 export type QueryParams = Record<string, QueryValue>;
-
-export interface RequestOptions {
-  method?: 'GET' | 'POST';
-  path: string;
-  query?: QueryParams;
-  /** JSON body (POST only). */
-  body?: unknown;
-  /** Caller's abort signal; combined with the per-request timeout. */
-  signal?: AbortSignal;
-  /** Overrides the client-wide timeout for this call. */
-  timeout?: number;
-  /** Overrides the client-wide `maxRetries` for this call. */
-  maxRetries?: number;
-  /** Overrides the client-wide `maxResponseBytes` for this call. */
-  maxResponseBytes?: number;
-  /** Sends `If-None-Match` for a conditional GET. */
-  ifNoneMatch?: string;
-  /** `Accept` override; also drives how the body is parsed. */
-  accept?: string;
-  /** How to read the response body. Defaults to `json`. */
-  parse?: 'json' | 'text';
-}
 
 /**
  * Per-call overrides accepted as the last argument of every resource method.
@@ -47,6 +30,27 @@ export interface RequestConfig {
   timeout?: number;
   /** Overrides the client-wide `maxRetries` for this call. */
   maxRetries?: number;
+  /** Extra headers for this call; they override the client-wide `headers`. */
+  headers?: Record<string, string>;
+  /** Overrides the client-wide `language` (`Accept-Language`) for this call. */
+  language?: string;
+}
+
+/** Options of the low-level {@link Transport.request}. */
+export interface RequestOptions extends RequestConfig {
+  method?: HttpMethod;
+  path: string;
+  query?: QueryParams;
+  /** JSON body (POST only). */
+  body?: unknown;
+  /** Overrides the client-wide `maxResponseBytes` for this call. */
+  maxResponseBytes?: number;
+  /** Sends `If-None-Match` for a conditional GET. */
+  ifNoneMatch?: string;
+  /** `Accept` override. */
+  accept?: string;
+  /** How to read the response body. Defaults to `json`. */
+  parse?: 'json' | 'text';
 }
 
 /** Low-level result returned by {@link Transport.request}. */
@@ -76,26 +80,34 @@ export class Transport {
     this.#origin = new URL(config.baseUrl).origin;
   }
 
+  /** Default timeout (ms) for history reads; resources apply it when none is given. */
+  get historyTimeout(): number {
+    return this.#config.historyTimeout;
+  }
+
   /** JSON convenience: returns the parsed body, throwing on non-2xx. */
   async get<T>(path: string, query?: QueryParams, config?: RequestConfig): Promise<T> {
     const result = await this.request<T>({ method: 'GET', path, query, ...pickConfig(config) });
     return result.data as T;
   }
 
-  /** JSON convenience for POST. Not retried (the result may not be idempotent). */
+  /** JSON convenience for POST. Not retried by default (it may not be idempotent). */
   async post<T>(path: string, body: unknown, config?: RequestConfig): Promise<T> {
     const result = await this.request<T>({ method: 'POST', path, body, ...pickConfig(config) });
     return result.data as T;
   }
 
   /**
-   * Full request with metadata. Retries eligible idempotent calls within the
-   * configured budget; see {@link isRetryable}/{@link nextDelayMs}.
+   * Full request with metadata. Failed attempts are retried according to the
+   * retry policy, always bounded by `maxRetries` and the `maxRetryDelay` budget.
    */
   async request<T>(options: RequestOptions): Promise<RawResult<T>> {
     const method = options.method ?? 'GET';
-    const idempotent = method === 'GET';
-    const url = this.buildUrl(options.path, options.query);
+    const { path } = options;
+    const url = this.buildUrl(path, options.query);
+    const init = this.buildInit(method, options);
+
+    const policy = this.#config.retry;
     const budget = this.#config.maxRetryDelay;
     const maxRetries = options.maxRetries ?? this.#config.maxRetries;
     let spent = 0;
@@ -103,17 +115,19 @@ export class Transport {
 
     for (;;) {
       try {
-        return await this.attempt<T>(method, url, options);
+        return await this.attempt<T>(method, path, url, init, options);
       } catch (error) {
         // A caller that aborted is a deliberate cancellation: never retry it,
         // and surface the clean mapped error rather than a raw AbortError.
         if (options.signal?.aborted) throw error;
 
-        const canRetry = attempt < maxRetries && isRetryable(error, idempotent);
-        if (!canRetry) throw error;
+        if (attempt >= maxRetries) throw error;
+        if (!shouldRetry({ error, attempt, method, path }, policy)) throw error;
 
-        const delay = nextDelayMs(error, attempt, budget - spent);
+        const delay = nextDelayMs(error, attempt, budget - spent, policy);
         if (delay === null) throw error;
+
+        safeCall(policy.onRetry, { error, retryNumber: attempt + 1, delayMs: delay, method, path });
 
         // If the caller aborts during the backoff wait, stop and surface the
         // last error instead of the sleep's raw rejection.
@@ -129,8 +143,10 @@ export class Transport {
   }
 
   private async attempt<T>(
-    method: 'GET' | 'POST',
+    method: HttpMethod,
+    path: string,
     url: string,
+    init: RequestInit,
     options: RequestOptions,
   ): Promise<RawResult<T>> {
     const controller = new AbortController();
@@ -152,10 +168,10 @@ export class Transport {
     const { fetch: doFetch } = this.#config;
 
     try {
-      const response = await doFetch(url, this.buildInit(method, options, controller.signal));
+      const response = await doFetch(url, { ...init, signal: controller.signal });
       // Read the body inside this try so the timeout and the caller's abort
       // signal still cover a slow or hung body, not just the headers phase.
-      return await this.handleResponse<T>(response, options);
+      return await this.handleResponse<T>(response, method, path, options);
     } catch (cause) {
       // Mapped API errors (non-2xx, oversize body, bad JSON) pass through intact.
       if (cause instanceof CotizaveError) throw cause;
@@ -186,9 +202,12 @@ export class Transport {
 
   private async handleResponse<T>(
     response: Response,
+    method: HttpMethod,
+    path: string,
     options: RequestOptions,
   ): Promise<RawResult<T>> {
     const meta = buildMeta(response.status, response.headers);
+    safeCall(this.#config.onResponse, { method, path, meta });
 
     // 304: no body to read; let the caller reuse its cached copy.
     if (response.status === 304) {
@@ -234,7 +253,7 @@ export class Transport {
   private async readBodyCapped(response: Response, maxBytes: number): Promise<string> {
     const body = response.body;
     if (!body) {
-      // No stream (e.g. some mocked responses): fall back to text(), still bounded in practice.
+      // No stream (e.g. some mocked responses): fall back to text().
       try {
         return await response.text();
       } catch {
@@ -272,7 +291,9 @@ export class Transport {
     // would send the X-API-Key header there. Reject anything off-origin.
     if (url.origin !== this.#origin) {
       throw new CotizaveError({
-        message: `Refusing to send a request to a different origin (${url.origin}). A request path must stay on ${this.#origin}.`,
+        message:
+          `Refusing to send a request to a different origin (${url.origin}). ` +
+          `A request path must stay on ${this.#origin}.`,
         code: 'invalid_request_path',
       });
     }
@@ -285,26 +306,38 @@ export class Transport {
     return url.toString();
   }
 
-  private buildInit(
-    method: 'GET' | 'POST',
-    options: RequestOptions,
-    signal: AbortSignal,
-  ): RequestInit {
-    const headers: Record<string, string> = {
-      'X-API-Key': this.#config.apiKey,
-      Accept: options.accept ? assertHeaderValue(options.accept, 'accept') : 'application/json',
-      'User-Agent': this.#config.userAgent,
-    };
-    if (options.ifNoneMatch) {
-      headers['If-None-Match'] = assertHeaderValue(options.ifNoneMatch, 'ifNoneMatch');
+  /**
+   * Builds the request init (everything except the per-attempt signal).
+   *
+   * Header precedence, lowest to highest: SDK defaults, client-wide `headers`
+   * and `language`, per-call `headers` and `language`, explicit `accept` /
+   * `ifNoneMatch`, and finally the API key, which nothing can override.
+   */
+  private buildInit(method: HttpMethod, options: RequestOptions): RequestInit {
+    const config = this.#config;
+    const headers = new Headers({ Accept: 'application/json', 'User-Agent': config.userAgent });
+
+    for (const [name, value] of Object.entries(config.headers)) headers.set(name, value);
+    if (config.language) headers.set('Accept-Language', config.language);
+
+    const perCall = guard(() => validateHeaders(options.headers, 'headers'));
+    for (const [name, value] of Object.entries(perCall)) headers.set(name, value);
+    if (options.language !== undefined) {
+      headers.set('Accept-Language', headerValue(options.language, 'language'));
     }
+
+    if (options.accept) headers.set('Accept', headerValue(options.accept, 'accept'));
+    if (options.ifNoneMatch) {
+      headers.set('If-None-Match', headerValue(options.ifNoneMatch, 'ifNoneMatch'));
+    }
+    headers.set('X-API-Key', config.apiKey);
 
     // The API is not expected to redirect. Following one could forward the
     // X-API-Key header to another origin (fetch only strips Authorization/Cookie
     // across origins), so treat any redirect as an error instead.
-    const init: RequestInit = { method, headers, signal, redirect: 'error' };
+    const init: RequestInit = { method, headers, redirect: 'error' };
     if (method === 'POST' && options.body !== undefined) {
-      headers['Content-Type'] = 'application/json';
+      headers.set('Content-Type', 'application/json');
       init.body = JSON.stringify(options.body);
     }
     return init;
@@ -317,7 +350,45 @@ export class Transport {
  */
 function pickConfig(config: RequestConfig | undefined): RequestConfig {
   if (!config) return {};
-  return { signal: config.signal, timeout: config.timeout, maxRetries: config.maxRetries };
+  return {
+    signal: config.signal,
+    timeout: config.timeout,
+    maxRetries: config.maxRetries,
+    headers: config.headers,
+    language: config.language,
+  };
+}
+
+/** Runs a user-supplied hook; a throwing hook must never break a request. */
+function safeCall<E>(hook: ((event: E) => void) | undefined, event: E): void {
+  if (!hook) return;
+  try {
+    hook(event);
+  } catch {
+    // Ignored on purpose: observability hooks are best-effort.
+  }
+}
+
+/** Turns a validation failure of per-call input into a catchable CotizaveError. */
+function guard<T>(validate: () => T): T {
+  try {
+    return validate();
+  } catch (cause) {
+    throw new CotizaveError({
+      message: errorMessage(cause),
+      code: 'invalid_header_value',
+      cause,
+    });
+  }
+}
+
+/**
+ * Guards a caller-supplied header value against CR/LF/control-character
+ * injection. A conformant `fetch` rejects these too, but a custom `fetch`
+ * (allowed via config) might not, so validate before handing it over.
+ */
+function headerValue(value: string, name: string): string {
+  return guard(() => validateHeaderValue(value, name));
 }
 
 function tryParseJson(text: string): { ok: true; value: unknown } | { ok: false } {
@@ -331,20 +402,4 @@ function tryParseJson(text: string): { ok: true; value: unknown } | { ok: false 
 function errorMessage(cause: unknown): string {
   if (cause instanceof Error) return cause.message;
   return String(cause);
-}
-
-/**
- * Guards a caller-supplied header value against CR/LF/control-character
- * injection. A conformant `fetch` rejects these too, but a custom `fetch`
- * (allowed via config) might not, so validate before we hand it over.
- */
-function assertHeaderValue(value: string, name: string): string {
-  // eslint-disable-next-line no-control-regex
-  if (/[\x00-\x1F\x7F]/.test(value)) {
-    throw new CotizaveError({
-      message: `Invalid \`${name}\` value: header values must not contain control characters.`,
-      code: 'invalid_header_value',
-    });
-  }
-  return value;
 }
