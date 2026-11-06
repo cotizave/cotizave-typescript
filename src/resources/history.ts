@@ -1,4 +1,5 @@
 import { Resource, cc, seg } from './base';
+import type { RequestConfig } from '../transport';
 import type { HistoryPoint, HistoryCollection, HistoricalLimitsResponse } from '../types/public';
 
 interface RateRef {
@@ -45,8 +46,8 @@ export class HistoryResource extends Resource {
    * @example
    * await client.history.get({ country: 'CO', rateId: 'co-trm', date: '2026-10-01' });
    */
-  get(options: HistoryPointOptions): Promise<HistoryPoint> {
-    return this.transport.get<HistoryPoint>(this.path(options), { date: options.date });
+  get(options: HistoryPointOptions, config?: RequestConfig): Promise<HistoryPoint> {
+    return this.transport.get<HistoryPoint>(this.path(options), { date: options.date }, config);
   }
 
   /**
@@ -55,12 +56,16 @@ export class HistoryResource extends Resource {
    * @example
    * await client.history.daily({ country: 'AR', rateId: 'ar-official', from: '2026-09-01', to: '2026-09-30' });
    */
-  daily(options: HistoryDailyOptions): Promise<HistoryCollection> {
-    return this.transport.get<HistoryCollection>(this.path(options), {
-      granularity: 'daily',
-      from: options.from,
-      to: options.to,
-    });
+  daily(options: HistoryDailyOptions, config?: RequestConfig): Promise<HistoryCollection> {
+    return this.transport.get<HistoryCollection>(
+      this.path(options),
+      {
+        granularity: 'daily',
+        from: options.from,
+        to: options.to,
+      },
+      config,
+    );
   }
 
   /**
@@ -68,12 +73,16 @@ export class HistoryResource extends Resource {
    * page's points are ascending. Pass the previous page's `next_cursor` to
    * continue. Only available where the plan allows raw history.
    */
-  raw(options: HistoryRawOptions): Promise<HistoryCollection> {
-    return this.transport.get<HistoryCollection>(this.path(options), {
-      granularity: 'raw',
-      cursor: options.cursor,
-      limit: options.limit,
-    });
+  raw(options: HistoryRawOptions, config?: RequestConfig): Promise<HistoryCollection> {
+    return this.transport.get<HistoryCollection>(
+      this.path(options),
+      {
+        granularity: 'raw',
+        cursor: options.cursor,
+        limit: options.limit,
+      },
+      config,
+    );
   }
 
   /**
@@ -87,16 +96,22 @@ export class HistoryResource extends Resource {
    *   console.log(point.date, point.mid);
    * }
    */
-  async *iterate(options: HistoryIterateOptions): AsyncGenerator<RawPoint, void, void> {
+  async *iterate(
+    options: HistoryIterateOptions,
+    config?: RequestConfig,
+  ): AsyncGenerator<RawPoint, void, void> {
     const maxPages = options.maxPages ?? 50;
     let cursor: string | undefined;
     for (let page = 0; page < maxPages; page += 1) {
-      const result: HistoryCollection = await this.raw({
-        country: options.country,
-        rateId: options.rateId,
-        ...(options.limit !== undefined ? { limit: options.limit } : {}),
-        ...(cursor !== undefined ? { cursor } : {}),
-      });
+      const result: HistoryCollection = await this.raw(
+        {
+          country: options.country,
+          rateId: options.rateId,
+          ...(options.limit !== undefined ? { limit: options.limit } : {}),
+          ...(cursor !== undefined ? { cursor } : {}),
+        },
+        config,
+      );
       for (const point of result.points) yield point;
       if (!result.next_cursor) return;
       cursor = result.next_cursor;
@@ -107,8 +122,8 @@ export class HistoryResource extends Resource {
    * Coverage (first/last/days) of the stored history for every rate the plan
    * can see — use it to know which dates are safe to request.
    */
-  limits(): Promise<HistoricalLimitsResponse> {
-    return this.transport.get<HistoricalLimitsResponse>('/v2/fx/historical-limits');
+  limits(config?: RequestConfig): Promise<HistoricalLimitsResponse> {
+    return this.transport.get<HistoricalLimitsResponse>('/v2/fx/historical-limits', undefined, config);
   }
 
   private path(ref: RateRef): string {

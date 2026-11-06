@@ -1,4 +1,5 @@
 import { Resource } from './base';
+import type { RequestConfig } from '../transport';
 import type { ConvertResponse, BulkConvertResponse } from '../types/public';
 
 /** Input for a single conversion. */
@@ -42,18 +43,22 @@ export class ConversionResource extends Resource {
    * @example
    * const result = await client.convert({ from: 'USD', to: 'BRL', amount: 100 });
    */
-  async convert(options: ConvertOptions): Promise<ConvertResponse> {
+  async convert(options: ConvertOptions, config?: RequestConfig): Promise<ConvertResponse> {
     if (!(typeof options.amount === 'number' && options.amount > 0)) {
       throw new TypeError('convert: `amount` must be a number greater than 0.');
     }
-    return this.transport.get<ConvertResponse>('/v2/fx/convert', {
-      from: options.from,
-      to: options.to,
-      amount: options.amount,
-      via: options.via,
-      market: options.market,
-      date: options.date,
-    });
+    return this.transport.get<ConvertResponse>(
+      '/v2/fx/convert',
+      {
+        from: options.from,
+        to: options.to,
+        amount: options.amount,
+        via: options.via,
+        market: options.market,
+        date: options.date,
+      },
+      config,
+    );
   }
 
   /**
@@ -69,7 +74,7 @@ export class ConversionResource extends Resource {
    *   ],
    * });
    */
-  async convertBulk(options: BulkConvertOptions): Promise<BulkConvertResponse> {
+  async convertBulk(options: BulkConvertOptions, config?: RequestConfig): Promise<BulkConvertResponse> {
     const conversions = options?.conversions;
     if (!Array.isArray(conversions) || conversions.length === 0) {
       throw new TypeError('convertBulk: `conversions` must be a non-empty array.');
@@ -79,6 +84,6 @@ export class ConversionResource extends Resource {
         `convertBulk: at most ${BULK_CONVERT_MAX} conversions are allowed (got ${conversions.length}).`,
       );
     }
-    return this.transport.post<BulkConvertResponse>('/v2/fx/convert', { conversions });
+    return this.transport.post<BulkConvertResponse>('/v2/fx/convert', { conversions }, config);
   }
 }

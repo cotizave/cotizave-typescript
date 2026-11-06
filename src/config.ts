@@ -39,6 +39,13 @@ export interface CotizaveOptions {
   maxRetryDelay?: number;
 
   /**
+   * Maximum size (bytes) of a response body the client will read before
+   * aborting with a `response_too_large` error. Guards against an oversized or
+   * decompression-bomb response. Defaults to 25_000_000 (25 MB).
+   */
+  maxResponseBytes?: number;
+
+  /**
    * Custom `fetch` implementation. Defaults to the global `fetch`. Useful for
    * tests, instrumentation, or runtimes that expose a non-global fetch.
    */
@@ -58,6 +65,7 @@ export interface ResolvedConfig {
   timeout: number;
   maxRetries: number;
   maxRetryDelay: number;
+  maxResponseBytes: number;
   fetch: FetchLike;
   userAgent: string;
 }
@@ -66,6 +74,7 @@ export const DEFAULT_BASE_URL = 'https://api.cotizave.com';
 export const DEFAULT_TIMEOUT = 30_000;
 export const DEFAULT_MAX_RETRIES = 2;
 export const DEFAULT_MAX_RETRY_DELAY = 60_000;
+export const DEFAULT_MAX_RESPONSE_BYTES = 25_000_000;
 
 /** SDK version, kept in sync with package.json by the build. */
 export const SDK_VERSION = '0.1.0';
@@ -119,12 +128,27 @@ export function resolveConfig(options: CotizaveOptions): ResolvedConfig {
     'maxRetryDelay',
     0,
   );
+  const maxResponseBytes = numberOption(
+    options.maxResponseBytes,
+    DEFAULT_MAX_RESPONSE_BYTES,
+    'maxResponseBytes',
+    1,
+  );
 
   const userAgent = options.userAgent
     ? `${baseUserAgent()} ${options.userAgent}`.trim()
     : baseUserAgent();
 
-  return { apiKey, baseUrl, timeout, maxRetries, maxRetryDelay, fetch: fetchImpl, userAgent };
+  return {
+    apiKey,
+    baseUrl,
+    timeout,
+    maxRetries,
+    maxRetryDelay,
+    maxResponseBytes,
+    fetch: fetchImpl,
+    userAgent,
+  };
 }
 
 function numberOption(value: number | undefined, fallback: number, name: string, min: number): number {

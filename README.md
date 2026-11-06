@@ -51,9 +51,27 @@ const client = new Cotizave({
   timeout: 30_000,                     // ms, default 30s
   maxRetries: 2,                       // additional retries for GETs, default 2
   maxRetryDelay: 60_000,               // total retry-wait budget per call, ms
+  maxResponseBytes: 25_000_000,        // response body cap, default 25 MB
   // fetch: customFetch,               // defaults to global fetch
   // userAgent: 'my-app/1.0.0',        // appended to the SDK User-Agent
 });
+```
+
+Every default is sensible out of the box, and everything above is yours to tune.
+
+### Per-call options
+
+Any method takes an optional last argument to override settings for that one call
+— pass an `AbortSignal` to cancel, a tighter `timeout`, or a different `maxRetries`:
+
+```ts
+const controller = new AbortController();
+const rates = await client.rates.list('AR', {}, { signal: controller.signal, timeout: 5_000 });
+// controller.abort() cancels the in-flight request.
+
+// Methods without a filter object still take the config as the last argument:
+const trm = await client.rates.get('CO', 'co-trm', { timeout: 2_000 });
+const conv = await client.convert({ from: 'USD', to: 'BRL', amount: 100 }, { maxRetries: 0 });
 ```
 
 ## First request

@@ -1,4 +1,5 @@
 import { Resource, cc } from './base';
+import type { RequestConfig } from '../transport';
 import type { SpreadResponse, RouteResponse } from '../types/public';
 import type { paths } from '../types/generated';
 
@@ -41,36 +42,46 @@ export interface BankRatesOptions {
 /** Advanced per-country FX tools: catalog, spread, best route, bank rates. */
 export class FxToolsResource extends Resource {
   /** The country's rate catalog (no prices). Growth+. */
-  markets(country: string): Promise<MarketsCatalog> {
-    return this.transport.get<MarketsCatalog>(`/v2/fx/${cc(country)}/markets`);
+  markets(country: string, config?: RequestConfig): Promise<MarketsCatalog> {
+    return this.transport.get<MarketsCatalog>(`/v2/fx/${cc(country)}/markets`, undefined, config);
   }
 
   /** The spread of the official rate against another market. Growth+. */
-  spread(country: string, options: SpreadOptions = {}): Promise<SpreadResponse> {
-    return this.transport.get<SpreadResponse>(`/v2/fx/${cc(country)}/spread`, {
-      against: options.against,
-      base: options.base,
-    });
+  spread(country: string, options: SpreadOptions = {}, config?: RequestConfig): Promise<SpreadResponse> {
+    return this.transport.get<SpreadResponse>(
+      `/v2/fx/${cc(country)}/spread`,
+      {
+        against: options.against,
+        base: options.base,
+      },
+      config,
+    );
   }
 
   /**
    * The best executable rate for an amount. Pro+. The backend resolves the
    * route — the SDK never computes it.
    */
-  route(country: string, options: RouteOptions): Promise<RouteResponse> {
-    return this.transport.get<RouteResponse>(`/v2/fx/${cc(country)}/route`, {
-      from: options.from,
-      to: options.to,
-      amount: options.amount,
-      direction: options.direction,
-      max_staleness: options.maxStaleness,
-    });
+  route(country: string, options: RouteOptions, config?: RequestConfig): Promise<RouteResponse> {
+    return this.transport.get<RouteResponse>(
+      `/v2/fx/${cc(country)}/route`,
+      {
+        from: options.from,
+        to: options.to,
+        amount: options.amount,
+        direction: options.direction,
+        max_staleness: options.maxStaleness,
+      },
+      config,
+    );
   }
 
   /** BCV per-bank quotations (all plans). Optionally filtered by bank code. */
-  bankRates(country: string, options: BankRatesOptions = {}): Promise<BankRatesResponse> {
-    return this.transport.get<BankRatesResponse>(`/v2/fx/${cc(country)}/bank-rates`, {
-      bank: options.bank,
-    });
+  bankRates(country: string, options: BankRatesOptions = {}, config?: RequestConfig): Promise<BankRatesResponse> {
+    return this.transport.get<BankRatesResponse>(
+      `/v2/fx/${cc(country)}/bank-rates`,
+      { bank: options.bank },
+      config,
+    );
   }
 }

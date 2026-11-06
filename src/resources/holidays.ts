@@ -1,4 +1,5 @@
 import { Resource, cc } from './base';
+import type { RequestConfig } from '../transport';
 import type { paths } from '../types/generated';
 
 type HolidaysUnion =
@@ -22,18 +23,18 @@ export class HolidaysResource extends Resource {
    * @example
    * const { holidays } = await client.holidays.list('AR', { year: 2026 });
    */
-  list(country: string, options: { year?: number } = {}): Promise<HolidaysYear> {
-    return this.transport.get<HolidaysYear>(`/v2/holidays/${cc(country)}`, { year: options.year });
+  list(country: string, options: { year?: number } = {}, config?: RequestConfig): Promise<HolidaysYear> {
+    return this.transport.get<HolidaysYear>(`/v2/holidays/${cc(country)}`, { year: options.year }, config);
   }
 
   /** Whether a given date is a holiday. */
-  check(country: string, date: string): Promise<HolidayCheck> {
-    return this.transport.get<HolidayCheck>(`/v2/holidays/${cc(country)}`, { date });
+  check(country: string, date: string, config?: RequestConfig): Promise<HolidayCheck> {
+    return this.transport.get<HolidayCheck>(`/v2/holidays/${cc(country)}`, { date }, config);
   }
 
   /** The next holiday on or after `from`. */
-  next(country: string, from: string): Promise<NextHoliday> {
-    return this.transport.get<NextHoliday>(`/v2/holidays/${cc(country)}`, { from });
+  next(country: string, from: string, config?: RequestConfig): Promise<NextHoliday> {
+    return this.transport.get<NextHoliday>(`/v2/holidays/${cc(country)}`, { from }, config);
   }
 
   /**
@@ -45,13 +46,18 @@ export class HolidaysResource extends Resource {
   async businessDays(
     country: string,
     options: { days: number; from?: string },
+    config?: RequestConfig,
   ): Promise<BusinessDaysResult> {
     if (!(typeof options?.days === 'number' && Number.isInteger(options.days) && options.days >= 0)) {
       throw new TypeError('businessDays: `days` must be a non-negative integer.');
     }
-    return this.transport.get<BusinessDaysResult>(`/v2/holidays/${cc(country)}/business-days`, {
-      from: options.from,
-      days: options.days,
-    });
+    return this.transport.get<BusinessDaysResult>(
+      `/v2/holidays/${cc(country)}/business-days`,
+      {
+        from: options.from,
+        days: options.days,
+      },
+      config,
+    );
   }
 }

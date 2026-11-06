@@ -1,4 +1,5 @@
 import { Resource, cc, seg } from './base';
+import type { RequestConfig } from '../transport';
 import type {
   RatesResponse,
   Rate,
@@ -37,14 +38,18 @@ export class RatesResource extends Resource {
    * @example
    * const { rates } = await client.rates.list('AR');
    */
-  list(country: string, options: ListRatesOptions = {}): Promise<RatesResponse> {
-    return this.transport.get<RatesResponse>(`/v2/fx/${cc(country)}/rates`, {
-      tag: options.tag,
-      category: options.category,
-      base: options.base,
-      quote: options.quote,
-      markup: options.markup,
-    });
+  list(country: string, options: ListRatesOptions = {}, config?: RequestConfig): Promise<RatesResponse> {
+    return this.transport.get<RatesResponse>(
+      `/v2/fx/${cc(country)}/rates`,
+      {
+        tag: options.tag,
+        category: options.category,
+        base: options.base,
+        quote: options.quote,
+        markup: options.markup,
+      },
+      config,
+    );
   }
 
   /**
@@ -53,8 +58,12 @@ export class RatesResource extends Resource {
    * @example
    * const trm = await client.rates.get('CO', 'co-trm');
    */
-  get(country: string, rateId: string): Promise<Rate> {
-    return this.transport.get<Rate>(`/v2/fx/${cc(country)}/rates/${seg(rateId, 'rate id')}`);
+  get(country: string, rateId: string, config?: RequestConfig): Promise<Rate> {
+    return this.transport.get<Rate>(
+      `/v2/fx/${cc(country)}/rates/${seg(rateId, 'rate id')}`,
+      undefined,
+      config,
+    );
   }
 
   /**
@@ -62,18 +71,23 @@ export class RatesResource extends Resource {
    *
    * Returns the rich list by default, or the compact map when `asMap` is set.
    */
-  global(options?: GlobalRatesOptions & { asMap?: false }): Promise<GlobalRatesList>;
-  global(options: GlobalRatesOptions & { asMap: true }): Promise<GlobalRatesMap>;
+  global(options?: GlobalRatesOptions & { asMap?: false }, config?: RequestConfig): Promise<GlobalRatesList>;
+  global(options: GlobalRatesOptions & { asMap: true }, config?: RequestConfig): Promise<GlobalRatesMap>;
   global(
     options: GlobalRatesOptions & { asMap?: boolean } = {},
+    config?: RequestConfig,
   ): Promise<GlobalRatesList | GlobalRatesMap> {
     const symbols = Array.isArray(options.symbols)
       ? options.symbols.join(',')
       : options.symbols;
-    return this.transport.get<GlobalRatesList | GlobalRatesMap>('/v2/fx/rates', {
-      symbols,
-      base: options.base,
-      format: options.asMap ? 'map' : undefined,
-    });
+    return this.transport.get<GlobalRatesList | GlobalRatesMap>(
+      '/v2/fx/rates',
+      {
+        symbols,
+        base: options.base,
+        format: options.asMap ? 'map' : undefined,
+      },
+      config,
+    );
   }
 }

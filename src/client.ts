@@ -1,5 +1,11 @@
 import { resolveConfig, type CotizaveOptions, type ResolvedConfig } from './config';
-import { Transport, type QueryParams, type RequestOptions, type RawResult } from './transport';
+import {
+  Transport,
+  type QueryParams,
+  type RequestOptions,
+  type RawResult,
+  type RequestConfig,
+} from './transport';
 import { RatesResource } from './resources/rates';
 import { HistoryResource } from './resources/history';
 import { ConversionResource, type ConvertOptions, type BulkConvertOptions } from './resources/conversion';
@@ -73,33 +79,33 @@ export class Cotizave {
   }
 
   /** Converts a single amount. See {@link ConversionResource.convert}. */
-  convert(options: ConvertOptions): Promise<ConvertResponse> {
-    return this.conversion.convert(options);
+  convert(options: ConvertOptions, config?: RequestConfig): Promise<ConvertResponse> {
+    return this.conversion.convert(options, config);
   }
 
   /** Converts up to 50 items in one call. See {@link ConversionResource.convertBulk}. */
-  convertBulk(options: BulkConvertOptions): Promise<BulkConvertResponse> {
-    return this.conversion.convertBulk(options);
+  convertBulk(options: BulkConvertOptions, config?: RequestConfig): Promise<BulkConvertResponse> {
+    return this.conversion.convertBulk(options, config);
   }
 
   /** The country's rate catalog (no prices). Growth+. */
-  markets(country: string): Promise<MarketsCatalog> {
-    return this.fx.markets(country);
+  markets(country: string, config?: RequestConfig): Promise<MarketsCatalog> {
+    return this.fx.markets(country, config);
   }
 
   /** Spread of the official rate against another market. Growth+. */
-  spread(country: string, options?: SpreadOptions): Promise<SpreadResponse> {
-    return this.fx.spread(country, options);
+  spread(country: string, options?: SpreadOptions, config?: RequestConfig): Promise<SpreadResponse> {
+    return this.fx.spread(country, options, config);
   }
 
   /** Best executable rate for an amount. Pro+. */
-  route(country: string, options: RouteOptions): Promise<RouteResponse> {
-    return this.fx.route(country, options);
+  route(country: string, options: RouteOptions, config?: RequestConfig): Promise<RouteResponse> {
+    return this.fx.route(country, options, config);
   }
 
   /** BCV per-bank quotations (all plans). */
-  bankRates(country: string, options?: BankRatesOptions): Promise<BankRatesResponse> {
-    return this.fx.bankRates(country, options);
+  bankRates(country: string, options?: BankRatesOptions, config?: RequestConfig): Promise<BankRatesResponse> {
+    return this.fx.bankRates(country, options, config);
   }
 
   /**

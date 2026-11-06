@@ -24,12 +24,29 @@ export interface RequestOptions {
   signal?: AbortSignal;
   /** Overrides the client-wide timeout for this call. */
   timeout?: number;
+  /** Overrides the client-wide `maxRetries` for this call. */
+  maxRetries?: number;
+  /** Overrides the client-wide `maxResponseBytes` for this call. */
+  maxResponseBytes?: number;
   /** Sends `If-None-Match` for a conditional GET. */
   ifNoneMatch?: string;
   /** `Accept` override; also drives how the body is parsed. */
   accept?: string;
   /** How to read the response body. Defaults to `json`. */
   parse?: 'json' | 'text';
+}
+
+/**
+ * Per-call overrides accepted as the last argument of every resource method.
+ * Everything is optional; omitted values fall back to the client configuration.
+ */
+export interface RequestConfig {
+  /** Abort signal to cancel this call (e.g. on request timeout or disconnect). */
+  signal?: AbortSignal;
+  /** Overrides the client-wide `timeout` (ms) for this call. */
+  timeout?: number;
+  /** Overrides the client-wide `maxRetries` for this call. */
+  maxRetries?: number;
 }
 
 /** Low-level result returned by {@link Transport.request}. */
@@ -50,8 +67,6 @@ export interface RawResult<T> {
 export class Transport {
   /** Fixed origin of the configured base URL; every request must stay on it. */
   private readonly origin: string;
-  /** Hard ceiling on a response body, to bound memory against a hostile endpoint. */
-  private static readonly MAX_RESPONSE_BYTES = 25_000_000;
 
   constructor(private readonly config: ResolvedConfig) {
     this.origin = new URL(config.baseUrl).origin;
@@ -78,6 +93,7 @@ export class Transport {
     const idempotent = method === 'GET';
     const url = this.buildUrl(options.path, options.query);
     const budget = this.config.maxRetryDelay;
+    const maxRetries = options.maxRetries ?? this.config.maxRetries;
     let spent = 0;
     let attempt = 0;
 
@@ -85,14 +101,23 @@ export class Transport {
       try {
         return await this.attempt<T>(method, url, options);
       } catch (error) {
-        const canRetry =
-          attempt < this.config.maxRetries && isRetryable(error, idempotent);
+        // A caller that aborted is a deliberate cancellation: never retry it,
+        // and surface the clean mapped error rather than a raw AbortError.
+        if (options.signal?.aborted) throw error;
+
+        const canRetry = attempt < maxRetries && isRetryable(error, idempotent);
         if (!canRetry) throw error;
 
         const delay = nextDelayMs(error, attempt, budget - spent);
         if (delay === null) throw error;
 
-        await sleep(delay, options.signal);
+        // If the caller aborts during the backoff wait, stop and surface the
+        // last error instead of the sleep's raw rejection.
+        try {
+          await sleep(delay, options.signal);
+        } catch {
+          throw error;
+        }
         spent += delay;
         attempt += 1;
       }
@@ -160,7 +185,8 @@ export class Transport {
     }
 
     const parse = options.parse ?? 'json';
-    const text = await this.readBodyCapped(response);
+    const maxBytes = options.maxResponseBytes ?? this.config.maxResponseBytes;
+    const text = await this.readBodyCapped(response, maxBytes);
 
     if (response.ok) {
       if (parse === 'text') {
@@ -194,7 +220,7 @@ export class Transport {
    * decompression bomb, which native fetch inflates). The read stays tied to
    * the request signal, so a timeout/abort cancels it.
    */
-  private async readBodyCapped(response: Response): Promise<string> {
+  private async readBodyCapped(response: Response, maxBytes: number): Promise<string> {
     const body = response.body;
     if (!body) {
       // No stream (e.g. some mocked responses): fall back to text(), still bounded in practice.
@@ -213,10 +239,10 @@ export class Transport {
       if (done) break;
       if (value) {
         total += value.byteLength;
-        if (total > Transport.MAX_RESPONSE_BYTES) {
+        if (total > maxBytes) {
           await reader.cancel();
           throw new CotizaveError({
-            message: `Response body exceeded the maximum allowed size (${Transport.MAX_RESPONSE_BYTES} bytes).`,
+            message: `Response body exceeded the maximum allowed size (${maxBytes} bytes).`,
             status: response.status,
             code: 'response_too_large',
           });
