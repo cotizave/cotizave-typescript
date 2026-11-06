@@ -266,3 +266,25 @@ describe('newly covered endpoints', () => {
     expect(res.stats.count).toBe(30);
   });
 });
+
+describe('engine integration', () => {
+  it('resends the JSON body when a POST retry is forced', async () => {
+    const { client, calls } = harness(
+      sequence(DOWN, { status: 200, body: { count: 1, succeeded: 1, failed: 0, results: [] } }),
+      { retry: { ...FAST_RETRY, shouldRetry: () => true } },
+    );
+    await client.convertBulk({ conversions: [{ from: 'USD', to: 'ARS', amount: 1 }] });
+    expect(calls.length).toBe(2);
+    expect(calls[0]!.method).toBe('POST');
+    expect(calls[1]!.body).toBe(calls[0]!.body);
+    expect(JSON.parse(calls[1]!.body!)).toEqual({
+      conversions: [{ from: 'USD', to: 'ARS', amount: 1 }],
+    });
+  });
+
+  it('rejects option values the engine cannot honor, with a clear message', () => {
+    expect(() => new Cotizave({ apiKey: 'k', timeout: 3_000_000_000 })).toThrow(/timeout/);
+    expect(() => new Cotizave({ apiKey: 'k', maxRetries: 1.5 })).toThrow(/integer/);
+    expect(() => new Cotizave({ apiKey: 'k', maxResponseBytes: 10.5 })).toThrow(/integer/);
+  });
+});

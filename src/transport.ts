@@ -1,6 +1,8 @@
+import ky, { isHTTPError, isResponseSizeError, isTimeoutError } from 'ky';
 import {
   validateHeaders,
   validateHeaderValue,
+  type FetchLike,
   type HttpMethod,
   type ResolvedConfig,
 } from './config';
@@ -13,7 +15,7 @@ import {
 } from './errors';
 import type { ApiErrorBody } from './types/public';
 import { buildMeta } from './internal/headers';
-import { nextDelayMs, shouldRetry, sleep } from './internal/retry';
+import { nextDelayMs, shouldRetry } from './internal/retry';
 
 /** A query value; `undefined`/`null` entries are omitted from the URL. */
 export type QueryValue = string | number | boolean | undefined | null;
@@ -63,10 +65,24 @@ export interface RawResult<T> {
   notModified: boolean;
 }
 
+/** What is needed to turn a low-level failure into a `CotizaveError`. */
+interface FailureContext {
+  url: string;
+  timeoutMs: number;
+  maxBytes: number;
+  signal?: AbortSignal;
+}
+
 /**
- * The typed HTTP layer: authentication, URL building, serialization, timeouts,
- * abort, error mapping, controlled retries and response metadata. Resource
- * modules sit on top of this; most users never call it directly.
+ * The typed HTTP layer.
+ *
+ * The request engine is [Ky](https://github.com/sindresorhus/ky): it runs the
+ * retry loop and its waits, the per-attempt timeout (headers and body) and the
+ * response size limit. This class adds what is specific to Cotizave on top:
+ * authentication, pinning every request to the configured origin, refusing
+ * redirects, the retry policy (quota vs. burst limits) and mapping failures to
+ * typed {@link CotizaveError}s. Resource modules sit on top of it; most users
+ * never call it directly.
  */
 export class Transport {
   // Runtime-private (`#`) so the API key never shows up when a consumer logs,
@@ -74,10 +90,13 @@ export class Transport {
   readonly #config: ResolvedConfig;
   /** Fixed origin of the configured base URL; every request must stay on it. */
   readonly #origin: string;
+  /** The configured `fetch`, adapted to the signature Ky calls. */
+  readonly #fetch: (request: Request) => Promise<Response>;
 
   constructor(config: ResolvedConfig) {
     this.#config = config;
     this.#origin = new URL(config.baseUrl).origin;
+    this.#fetch = adaptFetch(config.fetch);
   }
 
   /** Default timeout (ms) for history reads; resources apply it when none is given. */
@@ -102,124 +121,90 @@ export class Transport {
    * retry policy, always bounded by `maxRetries` and the `maxRetryDelay` budget.
    */
   async request<T>(options: RequestOptions): Promise<RawResult<T>> {
+    const config = this.#config;
     const method = options.method ?? 'GET';
-    const { path } = options;
+    const { path, signal } = options;
     const url = this.buildUrl(path, options.query);
-    const init = this.buildInit(method, options);
+    const headers = this.buildHeaders(method, options);
 
-    const policy = this.#config.retry;
-    const budget = this.#config.maxRetryDelay;
-    const maxRetries = options.maxRetries ?? this.#config.maxRetries;
-    let spent = 0;
-    let attempt = 0;
+    const failure: FailureContext = {
+      url,
+      timeoutMs: options.timeout ?? config.timeout,
+      maxBytes: options.maxResponseBytes ?? config.maxResponseBytes,
+      ...(signal ? { signal } : {}),
+    };
+    const policy = config.retry;
+    // Waits already spent and the wait chosen for the retry Ky is about to make.
+    const waits = { spent: 0, next: 0 };
+    let meta: ResponseMeta | undefined;
 
-    for (;;) {
-      try {
-        return await this.attempt<T>(method, path, url, init, options);
-      } catch (error) {
-        // A caller that aborted is a deliberate cancellation: never retry it,
-        // and surface the clean mapped error rather than a raw AbortError.
-        if (options.signal?.aborted) throw error;
+    const pending = ky(url, {
+      method,
+      headers,
+      ...(method === 'POST' && options.body !== undefined
+        ? { body: JSON.stringify(options.body) }
+        : {}),
+      ...(signal ? { signal } : {}),
+      fetch: this.#fetch,
+      // The API is not expected to redirect. Following one could forward the
+      // X-API-Key header to another origin (fetch only strips Authorization/Cookie
+      // across origins), so treat any redirect as an error instead.
+      redirect: 'error',
+      timeout: failure.timeoutMs,
+      maxResponseSize: failure.maxBytes,
+      // 304 is an answer, not a failure: the caller reuses its cached copy.
+      throwHttpErrors: (status) => status !== 304,
+      retry: {
+        limit: retryLimit(options.maxRetries ?? config.maxRetries),
+        // Let the policy below decide for every method instead of Ky's method gate.
+        methods: ['get', 'post'],
+        // Waits come from `delay`, which already honors the server's timing headers.
+        afterStatusCodes: [],
+        delay: () => waits.next,
+        shouldRetry: ({ error, retryCount }) => {
+          // A caller that aborted is a deliberate cancellation: never retry it.
+          if (signal?.aborted) return false;
+          const mapped = toCotizaveError(error, failure);
+          const attempt = retryCount - 1;
+          if (!shouldRetry({ error: mapped, attempt, method, path }, policy)) return false;
 
-        if (attempt >= maxRetries) throw error;
-        if (!shouldRetry({ error, attempt, method, path }, policy)) throw error;
+          const delay = nextDelayMs(mapped, attempt, config.maxRetryDelay - waits.spent, policy);
+          if (delay === null) return false;
 
-        const delay = nextDelayMs(error, attempt, budget - spent, policy);
-        if (delay === null) throw error;
-
-        safeCall(policy.onRetry, { error, retryNumber: attempt + 1, delayMs: delay, method, path });
-
-        // If the caller aborts during the backoff wait, stop and surface the
-        // last error instead of the sleep's raw rejection.
-        try {
-          await sleep(delay, options.signal);
-        } catch {
-          throw error;
-        }
-        spent += delay;
-        attempt += 1;
-      }
-    }
-  }
-
-  private async attempt<T>(
-    method: HttpMethod,
-    path: string,
-    url: string,
-    init: RequestInit,
-    options: RequestOptions,
-  ): Promise<RawResult<T>> {
-    const controller = new AbortController();
-    const timeoutMs = options.timeout ?? this.#config.timeout;
-    const onExternalAbort = () => controller.abort(options.signal?.reason);
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, timeoutMs);
-
-    if (options.signal) {
-      if (options.signal.aborted) controller.abort(options.signal.reason);
-      else options.signal.addEventListener('abort', onExternalAbort, { once: true });
-    }
-
-    // Call fetch unbound: invoking it as a method of the config object would give
-    // it the wrong `this`, which some runtimes reject ("Illegal invocation").
-    const { fetch: doFetch } = this.#config;
+          waits.next = delay;
+          waits.spent += delay;
+          safeCall(policy.onRetry, {
+            error: mapped,
+            retryNumber: retryCount,
+            delayMs: delay,
+            method,
+            path,
+          });
+          return true;
+        },
+      },
+      hooks: {
+        afterResponse: [
+          ({ response }) => {
+            meta = buildMeta(response.status, response.headers);
+            safeCall(config.onResponse, { method, path, meta });
+          },
+        ],
+      },
+    });
 
     try {
-      const response = await doFetch(url, { ...init, signal: controller.signal });
-      // Read the body inside this try so the timeout and the caller's abort
-      // signal still cover a slow or hung body, not just the headers phase.
-      return await this.handleResponse<T>(response, method, path, options);
-    } catch (cause) {
-      // Mapped API errors (non-2xx, oversize body, bad JSON) pass through intact.
-      if (cause instanceof CotizaveError) throw cause;
-      if (timedOut) {
-        throw new CotizaveTimeoutError({
-          message: `Request to ${url} timed out after ${timeoutMs}ms.`,
-          code: 'timeout',
-          cause,
-        });
+      const response = await pending;
+      meta ??= buildMeta(response.status, response.headers);
+
+      // 304: no body to read; let the caller reuse its cached copy.
+      if (response.status === 304) {
+        return { data: undefined, meta, notModified: true };
       }
-      if (options.signal?.aborted) {
-        throw new CotizaveConnectionError({
-          message: 'Request aborted by caller.',
-          code: 'aborted',
-          cause,
-        });
-      }
-      throw new CotizaveConnectionError({
-        message: `Network error while requesting ${url}: ${errorMessage(cause)}`,
-        code: 'connection_error',
-        cause,
-      });
-    } finally {
-      clearTimeout(timer);
-      options.signal?.removeEventListener('abort', onExternalAbort);
-    }
-  }
 
-  private async handleResponse<T>(
-    response: Response,
-    method: HttpMethod,
-    path: string,
-    options: RequestOptions,
-  ): Promise<RawResult<T>> {
-    const meta = buildMeta(response.status, response.headers);
-    safeCall(this.#config.onResponse, { method, path, meta });
-
-    // 304: no body to read; let the caller reuse its cached copy.
-    if (response.status === 304) {
-      return { data: undefined, meta, notModified: true };
-    }
-
-    const parse = options.parse ?? 'json';
-    const maxBytes = options.maxResponseBytes ?? this.#config.maxResponseBytes;
-    const text = await this.readBodyCapped(response, maxBytes);
-
-    if (response.ok) {
-      if (parse === 'text') {
+      // Read through Ky so the timeout and the size limit also cover the body.
+      const text = await pending.text();
+      if (options.parse === 'text') {
         return { data: text as unknown as T, meta, notModified: false };
       }
       // Empty 2xx body (e.g. 204) → undefined rather than a JSON parse error.
@@ -229,59 +214,15 @@ export class Transport {
       const parsed = tryParseJson(text);
       if (parsed.ok) return { data: parsed.value as T, meta, notModified: false };
       throw new CotizaveError({
-        message: `Expected JSON from ${response.url} but could not parse the response body.`,
+        message: `Expected JSON from ${url} but could not parse the response body.`,
         status: response.status,
         code: 'invalid_json_response',
         details: { non_json_body: text.slice(0, 500) },
         meta,
       });
+    } catch (error) {
+      throw toCotizaveError(error, failure);
     }
-
-    // Error path: the API always returns a JSON error body, but a proxy/gateway
-    // may return HTML. errorFromResponse keeps the status either way.
-    const parsed = tryParseJson(text);
-    const body = parsed.ok ? (parsed.value as Partial<ApiErrorBody>) : undefined;
-    throw errorFromResponse(response.status, body, meta, parsed.ok ? undefined : text);
-  }
-
-  /**
-   * Reads the response body as text while enforcing a byte ceiling, so a
-   * hostile or MITM'd endpoint cannot exhaust memory (including via a
-   * decompression bomb, which native fetch inflates). The read stays tied to
-   * the request signal, so a timeout/abort cancels it.
-   */
-  private async readBodyCapped(response: Response, maxBytes: number): Promise<string> {
-    const body = response.body;
-    if (!body) {
-      // No stream (e.g. some mocked responses): fall back to text().
-      try {
-        return await response.text();
-      } catch {
-        return '';
-      }
-    }
-    const reader = body.getReader();
-    const decoder = new TextDecoder();
-    let total = 0;
-    let out = '';
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) {
-        total += value.byteLength;
-        if (total > maxBytes) {
-          await reader.cancel();
-          throw new CotizaveError({
-            message: `Response body exceeded the maximum allowed size (${maxBytes} bytes).`,
-            status: response.status,
-            code: 'response_too_large',
-          });
-        }
-        out += decoder.decode(value, { stream: true });
-      }
-    }
-    out += decoder.decode();
-    return out;
   }
 
   private buildUrl(path: string, query?: QueryParams): string {
@@ -307,13 +248,11 @@ export class Transport {
   }
 
   /**
-   * Builds the request init (everything except the per-attempt signal).
-   *
    * Header precedence, lowest to highest: SDK defaults, client-wide `headers`
    * and `language`, per-call `headers` and `language`, explicit `accept` /
    * `ifNoneMatch`, and finally the API key, which nothing can override.
    */
-  private buildInit(method: HttpMethod, options: RequestOptions): RequestInit {
+  private buildHeaders(method: HttpMethod, options: RequestOptions): Headers {
     const config = this.#config;
     const headers = new Headers({ Accept: 'application/json', 'User-Agent': config.userAgent });
 
@@ -330,18 +269,75 @@ export class Transport {
     if (options.ifNoneMatch) {
       headers.set('If-None-Match', headerValue(options.ifNoneMatch, 'ifNoneMatch'));
     }
-    headers.set('X-API-Key', config.apiKey);
-
-    // The API is not expected to redirect. Following one could forward the
-    // X-API-Key header to another origin (fetch only strips Authorization/Cookie
-    // across origins), so treat any redirect as an error instead.
-    const init: RequestInit = { method, headers, redirect: 'error' };
     if (method === 'POST' && options.body !== undefined) {
       headers.set('Content-Type', 'application/json');
-      init.body = JSON.stringify(options.body);
     }
-    return init;
+    headers.set('X-API-Key', config.apiKey);
+    return headers;
   }
+}
+
+/**
+ * Ky calls `fetch(request)`; the SDK's public `fetch` option keeps the simpler
+ * `fetch(url, init)` shape. This bridges the two and calls the function unbound,
+ * since invoking fetch as a method of another object fails on some runtimes.
+ */
+function adaptFetch(userFetch: FetchLike): (request: Request) => Promise<Response> {
+  return async (request) => {
+    const init: RequestInit = {
+      method: request.method,
+      headers: request.headers,
+      signal: request.signal,
+      redirect: request.redirect,
+    };
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      // Read a clone: Ky keeps the original to build the request of a retry.
+      init.body = await request.clone().text();
+    }
+    return userFetch(request.url, init);
+  };
+}
+
+/** Maps any failure of a request to the SDK's typed error hierarchy. */
+function toCotizaveError(error: unknown, context: FailureContext): CotizaveError {
+  if (error instanceof CotizaveError) return error;
+
+  if (isHTTPError(error)) {
+    const { response, data } = error;
+    const meta = buildMeta(response.status, response.headers);
+    // Ky pre-parses JSON error bodies; anything else arrives as text.
+    const parsed =
+      typeof data === 'string' ? tryParseJson(data) : { ok: true as const, value: data };
+    const body = parsed.ok && isObject(parsed.value) ? parsed.value : undefined;
+    const rawText = body === undefined && typeof data === 'string' ? data : undefined;
+    return errorFromResponse(response.status, body as Partial<ApiErrorBody>, meta, rawText);
+  }
+  if (isResponseSizeError(error)) {
+    return new CotizaveError({
+      message: `Response body exceeded the maximum allowed size (${context.maxBytes} bytes).`,
+      code: 'response_too_large',
+      cause: error,
+    });
+  }
+  if (isTimeoutError(error)) {
+    return new CotizaveTimeoutError({
+      message: `Request to ${context.url} timed out after ${context.timeoutMs}ms.`,
+      code: 'timeout',
+      cause: error,
+    });
+  }
+  if (context.signal?.aborted) {
+    return new CotizaveConnectionError({
+      message: 'Request aborted by caller.',
+      code: 'aborted',
+      cause: error,
+    });
+  }
+  return new CotizaveConnectionError({
+    message: `Network error while requesting ${context.url}: ${errorMessage(error)}`,
+    code: 'connection_error',
+    cause: error,
+  });
 }
 
 /**
@@ -357,6 +353,11 @@ function pickConfig(config: RequestConfig | undefined): RequestConfig {
     headers: config.headers,
     language: config.language,
   };
+}
+
+/** Ky requires a finite, non-negative integer. */
+function retryLimit(maxRetries: number): number {
+  return Number.isFinite(maxRetries) ? Math.max(0, Math.trunc(maxRetries)) : 0;
 }
 
 /** Runs a user-supplied hook; a throwing hook must never break a request. */
@@ -397,6 +398,10 @@ function tryParseJson(text: string): { ok: true; value: unknown } | { ok: false 
   } catch {
     return { ok: false };
   }
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 function errorMessage(cause: unknown): string {

@@ -1,6 +1,6 @@
 import type { ResponseMeta } from './errors';
 
-/** Minimal `fetch` signature the SDK depends on (native `fetch` satisfies it). */
+/** The `fetch` signature accepted by the `fetch` option (native `fetch` satisfies it). */
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 /** HTTP methods the SDK issues. */
@@ -212,6 +212,9 @@ export const DEFAULT_RETRY_BASE_DELAY = 250;
 export const DEFAULT_RETRY_MAX_DELAY = 2_000;
 export const DEFAULT_RETRY_STATUSES: readonly number[] = [408, 500, 502, 503, 504];
 
+/** Largest delay a timer accepts (about 24.8 days). */
+const MAX_TIMEOUT = 2_147_483_647;
+
 /** SDK version. A test fails if this drifts from `version` in package.json. */
 export const SDK_VERSION = '0.1.0';
 
@@ -250,17 +253,18 @@ export function resolveConfig(options: CotizaveOptions): ResolvedConfig {
   const config: ResolvedConfig = {
     apiKey,
     baseUrl: resolveBaseUrl(options),
-    timeout: numberOption(options.timeout, DEFAULT_TIMEOUT, 'timeout', 1),
+    timeout: numberOption(options.timeout, DEFAULT_TIMEOUT, 'timeout', 1, MAX_TIMEOUT),
     historyTimeout: numberOption(
       options.historyTimeout,
       DEFAULT_HISTORY_TIMEOUT,
       'historyTimeout',
       1,
+      MAX_TIMEOUT,
     ),
-    maxRetries: numberOption(options.maxRetries, DEFAULT_MAX_RETRIES, 'maxRetries', 0),
+    maxRetries: integerOption(options.maxRetries, DEFAULT_MAX_RETRIES, 'maxRetries', 0),
     maxRetryDelay: numberOption(options.maxRetryDelay, DEFAULT_MAX_RETRY_DELAY, 'maxRetryDelay', 0),
     retry: resolveRetry(options.retry),
-    maxResponseBytes: numberOption(
+    maxResponseBytes: integerOption(
       options.maxResponseBytes,
       DEFAULT_MAX_RESPONSE_BYTES,
       'maxResponseBytes',
@@ -382,10 +386,25 @@ function numberOption(
   fallback: number,
   name: string,
   min: number,
+  max = Number.MAX_SAFE_INTEGER,
 ): number {
   if (value === undefined) return fallback;
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < min) {
-    throw new Error(`Cotizave: \`${name}\` must be a finite number >= ${min}.`);
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+    const range = max === Number.MAX_SAFE_INTEGER ? `>= ${min}` : `between ${min} and ${max}`;
+    throw new Error(`Cotizave: \`${name}\` must be a finite number ${range}.`);
   }
   return value;
+}
+
+function integerOption(
+  value: number | undefined,
+  fallback: number,
+  name: string,
+  min: number,
+): number {
+  const resolved = numberOption(value, fallback, name, min);
+  if (!Number.isInteger(resolved)) {
+    throw new Error(`Cotizave: \`${name}\` must be an integer.`);
+  }
+  return resolved;
 }

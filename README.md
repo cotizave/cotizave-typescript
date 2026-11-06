@@ -4,7 +4,7 @@ Official TypeScript SDK for the **Cotizave API v2** — multi-country exchange-r
 references, conversions, history, bank rates, catalogs and calendars.
 
 - 🧩 **Fully typed** — every request and response is derived from the OpenAPI v2 contract.
-- 🪶 **Zero runtime dependencies** — built on native `fetch`.
+- 🪶 **Nothing else to install** — the HTTP engine ([Ky](https://github.com/sindresorhus/ky), on native `fetch`) is bundled in.
 - 🔁 **Built-in retries** for transient failures, with rate-limit awareness.
 - 📦 **ESM + CommonJS**, Node.js 22+.
 - 🔐 **Server-side by design** — your API key never belongs in a browser bundle.

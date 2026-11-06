@@ -41,8 +41,10 @@ npm run format:check && npm run lint && npm run typecheck && npm run test:types 
 - This SDK covers **API v2 only**. Do not add v1 routes, v1 compatibility, or
   invented fields/endpoints. If the spec and the backend disagree, follow what is
   actually implemented and note the discrepancy.
-- Keep the package dependency-free at runtime. New runtime dependencies need a
-  clear, verifiable justification.
+- Keep runtime dependencies to a minimum. The only one is Ky (the HTTP engine),
+  inlined into the build; anything new needs a clear, verifiable justification.
+- When bumping Ky, update `THIRD_PARTY_NOTICES.md` and re-run the security tests
+  (`tests/security.test.ts`), which pin the behaviors we rely on.
 
 ## Design principles
 

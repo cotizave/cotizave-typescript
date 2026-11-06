@@ -20,7 +20,8 @@ Initial release. Not yet published to npm.
   - `convert` / `convertBulk` (max 50)
   - `markets` / `spread` / `route` / `bankRates`
   - `countries` / `currencies` / `banks` / `issuers` / `holidays` / `crypto`
-- Zero-runtime-dependency HTTP transport on native `fetch`: timeouts,
+- HTTP transport built on [Ky](https://github.com/sindresorhus/ky) over native
+  `fetch`, bundled into the build so there is nothing else to install: timeouts,
   `AbortSignal`, controlled retries with backoff + jitter, and rate-limit
   awareness (never retries a monthly-quota `429`).
 - Typed error hierarchy (`CotizaveError` and status-specific subclasses) that

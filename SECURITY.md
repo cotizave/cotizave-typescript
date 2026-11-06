@@ -30,10 +30,12 @@ it in error messages, send telemetry, or make requests to any other origin.
 
 ## Supply chain
 
-- The published package has **zero runtime dependencies**.
+- Installing the package installs **no other packages**. Its single runtime
+  dependency, Ky (MIT, itself dependency-free), is inlined at build time and
+  listed in `THIRD_PARTY_NOTICES.md`.
 - Releases are built on GitHub-hosted runners and published with npm provenance.
-- Published contents are restricted to `dist/`, `README.md`, `CHANGELOG.md`, and
-  `LICENSE` (verified with `npm pack --dry-run`).
+- Published contents are restricted to `dist/`, `README.md`, `CHANGELOG.md`,
+  `LICENSE` and `THIRD_PARTY_NOTICES.md` (verified with `npm pack --dry-run`).
 
 ## Supported versions
 

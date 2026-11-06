@@ -1,6 +1,12 @@
 import type { HttpMethod, ResolvedRetry } from '../config';
 import { CotizaveConnectionError, CotizaveError, CotizaveRateLimitError } from '../errors';
 
+/**
+ * Cotizave's retry *policy*: whether a failure is worth retrying and how long to
+ * wait. The retry *engine* (the loop, the sleeping, timeouts) is Ky; these pure
+ * functions are plugged into it through its `shouldRetry` and `delay` options.
+ */
+
 /** What the retry policy needs to know about the failed attempt. */
 export interface RetryAttempt {
   error: unknown;
@@ -43,7 +49,7 @@ export function shouldRetry(failed: RetryAttempt, policy: ResolvedRetry): boolea
 /**
  * Computes how long to wait before the next attempt, in milliseconds.
  *
- * Honors a server `Retry-After` (seconds) or the sub-second
+ * Honors a server `Retry-After` (seconds) or Cotizave's sub-second
  * `X-RateLimit-Retry-After-Ms` when present; otherwise uses exponential
  * backoff with full jitter. Returns `null` when the wait would exceed the
  * remaining time budget (the caller should stop retrying).
@@ -70,23 +76,4 @@ export function nextDelayMs(
   // Exponential backoff with full jitter, capped per wait and by the budget.
   const ceiling = Math.min(policy.maxDelay, policy.baseDelay * 2 ** attempt);
   return Math.min(Math.random() * ceiling, budgetLeftMs);
-}
-
-/** Sleeps for `ms`, rejecting early if the signal aborts. */
-export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(signal.reason ?? new Error('Aborted'));
-      return;
-    }
-    const timer = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
-      resolve();
-    }, ms);
-    const onAbort = () => {
-      clearTimeout(timer);
-      reject(signal?.reason ?? new Error('Aborted'));
-    };
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
 }
