@@ -61,7 +61,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           version="$(npm version "${{ inputs.bump }}" -m "release: v%s")"
           echo "version=${version#v}" >> "$GITHUB_OUTPUT"
-          git push --follow-tags origin HEAD
+          # checkout leaves a detached HEAD, so push explicitly to the branch
+          # this run was dispatched from, tags included.
+          git push --follow-tags origin "HEAD:${{ github.ref_name }}"
 
       - name: Create GitHub Release
         env:
