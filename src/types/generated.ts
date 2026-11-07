@@ -21,7 +21,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
@@ -67,7 +67,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                     code: string;
                 };
@@ -436,7 +436,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
@@ -518,7 +518,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
@@ -585,7 +585,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
@@ -641,7 +641,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                     /** @description Canonical id (ve-bcv). Case-insensitive. */
                     id: components["parameters"]["id"];
@@ -738,7 +738,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                     /** @description Canonical id (ve-bcv). Case-insensitive. */
                     id: components["parameters"]["id"];
@@ -807,7 +807,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
@@ -853,7 +853,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
@@ -1125,7 +1125,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
@@ -1197,7 +1197,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
+                    /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
                     cc: components["parameters"]["cc"];
                 };
                 cookie?: never;
@@ -1882,8 +1882,8 @@ export interface components {
         };
     };
     parameters: {
-        /** @description ISO 3166 alpha-2, lowercase (case-insensitive). */
-        cc: "ve" | "co" | "au" | "jp" | "se" | "pl" | "ch" | "pe" | "py" | "bo" | "ar" | "br" | "cl" | "uy" | "mx" | "cr" | "gt" | "hn" | "do" | "in" | "id" | "ph" | "th" | "za" | "cn" | "il" | "hk" | "ke" | "gh" | "ng" | "tr" | "ro" | "hu" | "it" | "nl" | "be" | "at" | "ie" | "fi" | "gr" | "hr" | "si" | "sk" | "ee" | "lv" | "lt" | "lu" | "mt" | "cy" | "bg" | "es" | "fr" | "de" | "pt" | "is" | "ua" | "ge" | "mk" | "md" | "am" | "uz" | "az" | "kz" | "kg";
+        /** @description ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported. */
+        cc: string;
         format: "json" | "csv" | "xml";
         /** @description Canonical id (ve-bcv). Case-insensitive. */
         id: string;

@@ -625,7 +625,7 @@ components:
   securitySchemes:
     ApiKey: {type: apiKey, in: header, name: X-API-Key}
   parameters:
-    cc: {name: cc, in: path, required: true, schema: {type: string, enum: [ve, co, au, jp, se, pl, ch, pe, py, bo, ar, br, cl, uy, mx, cr, gt, hn, do, in, id, ph, th, za, cn, il, hk, ke, gh, ng, tr, ro, hu, it, nl, be, at, ie, fi, gr, hr, si, sk, ee, lv, lt, lu, mt, cy, bg, es, fr, de, pt, is, ua, ge, mk, md, am, uz, az, kz, kg]}, description: 'ISO 3166 alpha-2, lowercase (case-insensitive).'}
+    cc: {name: cc, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z]{2}$'}, description: 'ISO 3166 alpha-2 (case-insensitive). The set of published countries grows over time; get the live list from GET /v2/countries rather than hard-coding it. A code that is not published yet returns 404 country_not_supported.'}
     id: {name: id, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z]{2}-[A-Za-z0-9-]+$'}, description: 'Canonical id (ve-bcv). Case-insensitive.'}
     format: {name: format, in: query, schema: {type: string, enum: [json, csv, xml]}}
   responses:
