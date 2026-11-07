@@ -18,5 +18,6 @@ if (!pattern.test(source)) {
 const updated = source.replace(pattern, `export const SDK_VERSION = '${pkg.version}';`);
 if (updated !== source) {
   writeFileSync(configPath, updated);
-  console.log(`sync-version: SDK_VERSION set to ${pkg.version}`);
+  // stderr, not stdout: this runs inside `npm version`, whose stdout may be captured.
+  console.error(`sync-version: SDK_VERSION set to ${pkg.version}`);
 }

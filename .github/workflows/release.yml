@@ -59,8 +59,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          version="$(npm version "${{ inputs.bump }}" -m "release: v%s")"
-          echo "version=${version#v}" >> "$GITHUB_OUTPUT"
+          npm version "${{ inputs.bump }}" -m "release: v%s" > /dev/null
+          # Read the new version from package.json: capturing npm's stdout would
+          # also pick up the version lifecycle script's output and break $GITHUB_OUTPUT.
+          version="$(node -p "require('./package.json').version")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           # checkout leaves a detached HEAD, so push explicitly to the branch
           # this run was dispatched from, tags included.
           git push --follow-tags origin "HEAD:${{ github.ref_name }}"
