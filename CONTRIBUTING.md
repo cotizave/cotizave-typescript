@@ -83,4 +83,29 @@ Prose docs are kept in English and Spanish; code, comments, identifiers and erro
 
 - Use clear, present-tense commit messages.
 - Describe the change and link any related contract update.
-- A maintainer reviews and approves releases; see the release workflow.
+
+## Releasing
+
+Releases are driven by the **Release** workflow (`.github/workflows/release.yml`),
+not by publishing from a laptop.
+
+1. In the repo, open **Actions → Release → Run workflow**, pick the bump
+   (`patch` / `minor` / `major`) and run it.
+2. The `tag` job runs the full gate, bumps the version (keeping `SDK_VERSION` in
+   sync via the `version` script), pushes the tag, and creates a GitHub Release
+   with auto-generated notes.
+3. The `publish` job waits for approval in the `npm-publish` environment, then
+   publishes to npm with provenance via Trusted Publishing (OIDC) — no stored
+   token.
+
+One-time setup for the automated path:
+
+- A GitHub **Environment** named `npm-publish` with required reviewers
+  (Settings → Environments).
+- A **Trusted Publisher** on npm for this repo + `release.yml` + the
+  `npm-publish` environment (npm package Settings → Trusted Publishers).
+
+The **first** publish of a brand-new package name is different: npm holds it as a
+staged release behind a `0.0.0-stage` placeholder until a maintainer approves it
+(`npm stage list` → `npm stage approve <id>`, or the Staged Packages tab). After
+that first approval, the workflow above publishes directly.

@@ -1,0 +1,105 @@
+name: Release
+
+# One-click release. Run it from the Actions tab, pick a version bump, and it:
+#   1. runs the full gate, bumps the version, pushes the tag and creates a
+#      GitHub Release with auto-generated notes;
+#   2. after manual approval (the `npm-publish` environment), publishes to npm
+#      with provenance via Trusted Publishing (OIDC) — no stored token.
+#
+# Requires: an `npm-publish` GitHub Environment with required reviewers, and a
+# Trusted Publisher on npm for this repo + `release.yml` + `npm-publish`.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        required: true
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the version commit/tag and create the Release
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify types match the OpenAPI spec
+        run: |
+          npm run generate:types
+          git diff --exit-code -- src/types/generated.ts
+
+      - name: Gate (format, lint, types, tests, build, package)
+        run: |
+          npm run format:check
+          npm run lint
+          npm run typecheck
+          npm run test:types
+          npm run test
+          npm run build
+          npm run check:package
+
+      - name: Bump version, tag and push
+        id: bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          version="$(npm version "${{ inputs.bump }}" -m "release: v%s")"
+          echo "version=${version#v}" >> "$GITHUB_OUTPUT"
+          git push --follow-tags origin HEAD
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "v${{ steps.bump.outputs.version }}" --title "v${{ steps.bump.outputs.version }}" --generate-notes
+
+  publish:
+    needs: tag
+    runs-on: ubuntu-latest
+    environment: npm-publish # required-reviewers gate lives here
+    permissions:
+      contents: read
+      id-token: write # OIDC token for Trusted Publishing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.tag.outputs.version }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      # npm 11.5.1+ is required for Trusted Publishing (OIDC) with provenance.
+      # Pinned (not @latest) to keep the privileged publish job's trusted surface small.
+      - name: Ensure a known-good npm
+        run: npm install -g npm@11.17.0
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify packaged contents
+        run: npm pack --dry-run
+
+      # With Trusted Publishing configured, no NODE_AUTH_TOKEN is needed; npm
+      # exchanges the OIDC token automatically and attaches provenance.
+      - name: Publish to npm
+        run: npm publish --provenance --access public
