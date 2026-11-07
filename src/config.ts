@@ -216,7 +216,7 @@ export const DEFAULT_RETRY_STATUSES: readonly number[] = [408, 500, 502, 503, 50
 const MAX_TIMEOUT = 2_147_483_647;
 
 /** SDK version. A test fails if this drifts from `version` in package.json. */
-export const SDK_VERSION = '0.1.0';
+export const SDK_VERSION = '0.1.1';
 
 /** Header the SDK owns; callers can never set or replace it. */
 const RESERVED_HEADER = 'x-api-key';
