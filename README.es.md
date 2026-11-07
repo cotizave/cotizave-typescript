@@ -15,7 +15,7 @@ multipaís, conversiones, histórico, tasas de bancos, catálogos y calendarios.
 
 ## ¿Qué es Cotizave?
 
-[Cotizave](https://cotizave.com) es una plataforma de datos cambiarios para
+[Cotizave](https://global.cotizave.com) es una plataforma de datos cambiarios para
 desarrolladores y empresas. La API v2 sirve referencias de monedas de varios
 países, series históricas, conversiones, tasas de bancos, directorios de emisores
 y calendarios de feriados, todo detrás de una sola API key.
@@ -23,7 +23,7 @@ y calendarios de feriados, todo detrás de una sola API key.
 ## Requisitos
 
 - Node.js **22+** (sirve cualquier runtime con `fetch` global; también podés pasar el tuyo).
-- Una API key de Cotizave — creala en tu [panel](https://cotizave.com).
+- Una API key de Cotizave — creala en tu [panel](https://app.cotizave.com).
 
 ## Instalación
 

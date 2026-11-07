@@ -15,7 +15,7 @@ references, conversions, history, bank rates, catalogs and calendars.
 
 ## What is Cotizave?
 
-[Cotizave](https://cotizave.com) is an exchange-rate data platform for developers
+[Cotizave](https://global.cotizave.com) is an exchange-rate data platform for developers
 and businesses. The v2 API serves currency references for multiple countries,
 historical series, conversions, bank rates, issuer directories and holiday
 calendars behind a single API key.
@@ -23,7 +23,7 @@ calendars behind a single API key.
 ## Requirements
 
 - Node.js **22+** (any runtime with a global `fetch` works; you can also pass your own).
-- A Cotizave API key — create one in your [dashboard](https://cotizave.com).
+- A Cotizave API key — create one in your [dashboard](https://app.cotizave.com).
 
 ## Installation
 
